@@ -5,6 +5,9 @@
 #include "BrainComponent.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "ShooterSquadComponent.h"
+#include "BrainComponent.h"
+#include "Components/StateTreeAIComponent.h"
 
 AShooterAIController::AShooterAIController()
 {
