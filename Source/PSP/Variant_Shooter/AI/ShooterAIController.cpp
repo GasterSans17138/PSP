@@ -1,5 +1,10 @@
 #include "ShooterAIController.h"
 #include "ShooterAICharacter.h"
+#include "ShooterCharacter.h"
+#include "ShooterSquadComponent.h"
+#include "BrainComponent.h"
+#include "Components/StateTreeAIComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "ShooterSquadComponent.h"
 #include "BrainComponent.h"
 #include "Components/StateTreeAIComponent.h"
@@ -38,4 +43,63 @@ UShooterSquadComponent* AShooterAIController::GetControlledSquadComponent() cons
 	}
 
 	return nullptr;
+}
+
+APawn* AShooterAIController::AcquirePlayerTarget()
+{
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	CombatTarget = PlayerPawn;
+	return PlayerPawn;
+}
+
+EPathFollowingRequestResult::Type AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanStrafe)
+{
+	APawn* TargetPawn = CombatTarget.Get();
+	if (!IsValid(TargetPawn))
+	{
+		TargetPawn = AcquirePlayerTarget();
+	}
+
+	if (!IsValid(TargetPawn))
+	{
+		return EPathFollowingRequestResult::Failed;
+	}
+
+	FAIMoveRequest MoveRequest;
+	MoveRequest.SetGoalActor(TargetPawn);
+	MoveRequest.SetAcceptanceRadius(AcceptanceRadius);
+	MoveRequest.SetUsePathfinding(true);
+	MoveRequest.SetCanStrafe(bCanStrafe);
+
+	return MoveTo(MoveRequest);
+}
+
+void AShooterAIController::SetFireEnabled(bool bEnabled)
+{
+	AShooterCharacter* Shooter = Cast<AShooterCharacter>(GetPawn());
+	if (!IsValid(Shooter))
+	{
+		return;
+	}
+
+	if (bEnabled)
+	{
+		Shooter->DoStartFiring();
+	}
+	else
+	{
+		Shooter->DoStopFiring();
+	}
+}
+
+void AShooterAIController::UpdateFocusOnCombatTarget()
+{
+	if (APawn* TargetPawn = CombatTarget.Get())
+	{
+		SetFocus(TargetPawn);
+	}
+	else
+	{
+		ClearFocus(EAIFocusPriority::Gameplay);
+	}
 }
