@@ -6,7 +6,6 @@ AShooterAICharacter::AShooterAICharacter()
 {
 	SquadComponent = CreateDefaultSubobject<UShooterSquadComponent>(TEXT("SquadComponent"));
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-	AIControllerClass = AShooterAIController::StaticClass();
 }
 
 void AShooterAICharacter::RefreshSquadOrder()
