@@ -5,6 +5,9 @@
 #include "BrainComponent.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "ShooterSquadComponent.h"
+#include "BrainComponent.h"
+#include "Components/StateTreeAIComponent.h"
 
 AShooterAIController::AShooterAIController()
 {
@@ -50,6 +53,7 @@ APawn* AShooterAIController::AcquirePlayerTarget()
 }
 
 bool AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanStrafe)
+EPathFollowingRequestResult::Type AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanStrafe)
 {
 	APawn* TargetPawn = CombatTarget.Get();
 	if (!IsValid(TargetPawn))
@@ -60,6 +64,7 @@ bool AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanS
 	if (!IsValid(TargetPawn))
 	{
 		return false;
+		return EPathFollowingRequestResult::Failed;
 	}
 
 	FAIMoveRequest MoveRequest;
@@ -70,6 +75,7 @@ bool AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanS
 
 	MoveTo(MoveRequest);
 	return true;
+	return MoveTo(MoveRequest);
 }
 
 void AShooterAIController::SetFireEnabled(bool bEnabled)

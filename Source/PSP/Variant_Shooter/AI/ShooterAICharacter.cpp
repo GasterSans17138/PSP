@@ -1,5 +1,6 @@
 #include "ShooterAICharacter.h"
 #include "ShooterSquadComponent.h"
+#include "ShooterAIController.h"
 
 AShooterAICharacter::AShooterAICharacter()
 {

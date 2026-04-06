@@ -50,6 +50,7 @@ public:
 	/** Moves toward combat target using AI MoveTo. */
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	bool MoveToCombatTarget(float AcceptanceRadius = 550.0f, bool bCanStrafe = true);
+	EPathFollowingRequestResult::Type MoveToCombatTarget(float AcceptanceRadius = 550.0f, bool bCanStrafe = true);
 
 	/** Starts or stops firing on the controlled shooter character. */
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
