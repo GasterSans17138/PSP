@@ -52,6 +52,7 @@ APawn* AShooterAIController::AcquirePlayerTarget()
 	return PlayerPawn;
 }
 
+bool AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanStrafe)
 EPathFollowingRequestResult::Type AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanStrafe)
 {
 	APawn* TargetPawn = CombatTarget.Get();
@@ -62,6 +63,7 @@ EPathFollowingRequestResult::Type AShooterAIController::MoveToCombatTarget(float
 
 	if (!IsValid(TargetPawn))
 	{
+		return false;
 		return EPathFollowingRequestResult::Failed;
 	}
 
@@ -71,6 +73,8 @@ EPathFollowingRequestResult::Type AShooterAIController::MoveToCombatTarget(float
 	MoveRequest.SetUsePathfinding(true);
 	MoveRequest.SetCanStrafe(bCanStrafe);
 
+	MoveTo(MoveRequest);
+	return true;
 	return MoveTo(MoveRequest);
 }
 
