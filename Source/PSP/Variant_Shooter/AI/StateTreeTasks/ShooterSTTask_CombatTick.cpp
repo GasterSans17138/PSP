@@ -3,6 +3,25 @@
 #include "StateTreeExecutionContext.h"
 #include "GameFramework/Pawn.h"
 
+EStateTreeRunStatus UShooterSTTask_CombatTick::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
+{
+	Super::EnterState(Context, Transition);
+
+	AShooterAIController* Controller = Cast<AShooterAIController>(Context.GetOwner());
+	if (!IsValid(Controller))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	if (bAcquireTargetOnEnter)
+	{
+		Controller->AcquirePlayerTarget();
+	}
+
+	Controller->SetFireEnabled(false);
+	return EStateTreeRunStatus::Running;
+}
+
 EStateTreeRunStatus UShooterSTTask_CombatTick::Tick(FStateTreeExecutionContext& Context, const float DeltaTime)
 {
 	Super::Tick(Context, DeltaTime);
