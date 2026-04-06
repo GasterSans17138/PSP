@@ -1,13 +1,12 @@
 #include "ShooterAIController.h"
 #include "ShooterAICharacter.h"
 #include "ShooterCharacter.h"
+#include "ShooterPickup.h"
 #include "ShooterSquadComponent.h"
 #include "BrainComponent.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "ShooterSquadComponent.h"
-#include "BrainComponent.h"
-#include "Components/StateTreeAIComponent.h"
+#include "Navigation/PathFollowingComponent.h"
 
 AShooterAIController::AShooterAIController()
 {
@@ -18,6 +17,8 @@ AShooterAIController::AShooterAIController()
 void AShooterAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
+
+	RefreshControlledAIState();
 
 	if (bStartLogicOnPossess && BrainComponent && !BrainComponent->IsRunning())
 	{
@@ -31,6 +32,9 @@ void AShooterAIController::OnUnPossess()
 	{
 		BrainComponent->StopLogic(TEXT("UnPossess"));
 	}
+
+	CombatTarget = nullptr;
+	WeaponTarget = nullptr;
 
 	Super::OnUnPossess();
 }
@@ -49,11 +53,11 @@ APawn* AShooterAIController::AcquirePlayerTarget()
 {
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	CombatTarget = PlayerPawn;
+	RefreshControlledAIState();
 	return PlayerPawn;
 }
 
 bool AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanStrafe)
-EPathFollowingRequestResult::Type AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanStrafe)
 {
 	APawn* TargetPawn = CombatTarget.Get();
 	if (!IsValid(TargetPawn))
@@ -63,8 +67,8 @@ EPathFollowingRequestResult::Type AShooterAIController::MoveToCombatTarget(float
 
 	if (!IsValid(TargetPawn))
 	{
+		RefreshControlledAIState();
 		return false;
-		return EPathFollowingRequestResult::Failed;
 	}
 
 	FAIMoveRequest MoveRequest;
@@ -74,8 +78,8 @@ EPathFollowingRequestResult::Type AShooterAIController::MoveToCombatTarget(float
 	MoveRequest.SetCanStrafe(bCanStrafe);
 
 	MoveTo(MoveRequest);
+	RefreshControlledAIState();
 	return true;
-	return MoveTo(MoveRequest);
 }
 
 void AShooterAIController::SetFireEnabled(bool bEnabled)
@@ -105,5 +109,105 @@ void AShooterAIController::UpdateFocusOnCombatTarget()
 	else
 	{
 		ClearFocus(EAIFocusPriority::Gameplay);
+	}
+}
+
+bool AShooterAIController::HasUsableWeapon() const
+{
+	const AShooterAICharacter* ShooterAI = Cast<AShooterAICharacter>(GetPawn());
+	return IsValid(ShooterAI) && ShooterAI->HasWeaponState();
+}
+
+AActor* AShooterAIController::FindBestWeaponPickup(float SearchRadius)
+{
+	WeaponTarget = nullptr;
+
+	APawn* SelfPawn = GetPawn();
+	if (!IsValid(SelfPawn))
+	{
+		RefreshControlledAIState();
+		return nullptr;
+	}
+
+	// If already armed, no need to look for a pickup.
+	if (const AShooterAICharacter* ShooterAI = Cast<AShooterAICharacter>(SelfPawn))
+	{
+		if (ShooterAI->GetCurrentWeaponActor() != nullptr)
+		{
+			RefreshControlledAIState();
+			return nullptr;
+		}
+	}
+
+	TArray<AActor*> FoundPickups;
+	UGameplayStatics::GetAllActorsOfClass(this, AShooterPickup::StaticClass(), FoundPickups);
+
+	AActor* BestPickup = nullptr;
+	float BestDistSq = FLT_MAX;
+	const FVector SelfLocation = SelfPawn->GetActorLocation();
+	const float MaxDistSq = FMath::Square(SearchRadius);
+
+	for (AActor* Candidate : FoundPickups)
+	{
+		if (!IsValid(Candidate))
+		{
+			continue;
+		}
+
+		// Hidden pickup = already taken / unavailable.
+		if (Candidate->IsHidden())
+		{
+			continue;
+		}
+
+		const float DistSq = FVector::DistSquared(SelfLocation, Candidate->GetActorLocation());
+		if (DistSq > MaxDistSq)
+		{
+			continue;
+		}
+
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			BestPickup = Candidate;
+		}
+	}
+
+	WeaponTarget = BestPickup;
+	RefreshControlledAIState();
+	return BestPickup;
+}
+
+bool AShooterAIController::MoveToWeaponTarget(float AcceptanceRadius)
+{
+	AActor* TargetActor = WeaponTarget.Get();
+	if (!IsValid(TargetActor))
+	{
+		RefreshControlledAIState();
+		return false;
+	}
+
+	FAIMoveRequest MoveRequest;
+	MoveRequest.SetGoalActor(TargetActor);
+	MoveRequest.SetAcceptanceRadius(AcceptanceRadius);
+	MoveRequest.SetUsePathfinding(true);
+	MoveRequest.SetCanStrafe(false);
+
+	MoveTo(MoveRequest);
+	RefreshControlledAIState();
+	return true;
+}
+
+void AShooterAIController::ClearWeaponTarget()
+{
+	WeaponTarget = nullptr;
+	RefreshControlledAIState();
+}
+
+void AShooterAIController::RefreshControlledAIState()
+{
+	if (AShooterAICharacter* ShooterAI = Cast<AShooterAICharacter>(GetPawn()))
+	{
+		ShooterAI->RefreshAIState();
 	}
 }

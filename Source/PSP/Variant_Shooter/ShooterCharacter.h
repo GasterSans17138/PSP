@@ -120,6 +120,15 @@ public:
 
 	//~Begin IShooterWeaponHolder interface
 
+	UFUNCTION(BlueprintPure, Category = "Weapons")
+	bool HasWeapon() const { return CurrentWeapon != nullptr; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapons")
+	AShooterWeapon* GetCurrentWeapon() const { return CurrentWeapon; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapons")
+	int32 GetOwnedWeaponCount() const { return OwnedWeapons.Num(); }
+
 	/** Attaches a weapon's meshes to the owner */
 	virtual void AttachWeaponMeshes(AShooterWeapon* Weapon) override;
 

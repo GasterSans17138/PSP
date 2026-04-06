@@ -50,7 +50,6 @@ public:
 	/** Moves toward combat target using AI MoveTo. */
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	bool MoveToCombatTarget(float AcceptanceRadius = 550.0f, bool bCanStrafe = true);
-	EPathFollowingRequestResult::Type MoveToCombatTarget(float AcceptanceRadius = 550.0f, bool bCanStrafe = true);
 
 	/** Starts or stops firing on the controlled shooter character. */
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
@@ -60,8 +59,35 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	void UpdateFocusOnCombatTarget();
 
+	/** Returns true if the controlled AI has a currently equipped weapon. */
+	UFUNCTION(BlueprintPure, Category = "AI|Weapon")
+	bool HasUsableWeapon() const;
+
+	/** Finds the nearest visible pickup in range and stores it as weapon target. */
+	UFUNCTION(BlueprintCallable, Category = "AI|Weapon")
+	AActor* FindBestWeaponPickup(float SearchRadius = 3000.0f);
+
+	/** Moves toward current weapon target. */
+	UFUNCTION(BlueprintCallable, Category = "AI|Weapon")
+	bool MoveToWeaponTarget(float AcceptanceRadius = 100.0f);
+
+	/** Clears current weapon target. */
+	UFUNCTION(BlueprintCallable, Category = "AI|Weapon")
+	void ClearWeaponTarget();
+
+	/** Returns current weapon pickup target. */
+	UFUNCTION(BlueprintPure, Category = "AI|Weapon")
+	AActor* GetWeaponTarget() const { return WeaponTarget.Get(); }
+
+	/** Refreshes cached AI state booleans on the controlled pawn. */
+	UFUNCTION(BlueprintCallable, Category = "AI|State")
+	void RefreshControlledAIState();
+
 protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "AI|Combat")
 	TWeakObjectPtr<APawn> CombatTarget;
+
+	UPROPERTY(BlueprintReadOnly, Category = "AI|Weapon")
+	TWeakObjectPtr<AActor> WeaponTarget;
 };

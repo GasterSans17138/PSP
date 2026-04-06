@@ -3,17 +3,21 @@
 #include "StateTreeExecutionContext.h"
 #include "GameFramework/Pawn.h"
 
-EStateTreeRunStatus UShooterSTTask_CombatTick::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
+AShooterAIController* FShooterSTTask_CombatTick::GetController(FStateTreeExecutionContext& Context) const
 {
-	Super::EnterState(Context, Transition);
+	return Cast<AShooterAIController>(Context.GetOwner());
+}
 
-	AShooterAIController* Controller = Cast<AShooterAIController>(Context.GetOwner());
+EStateTreeRunStatus FShooterSTTask_CombatTick::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	AShooterAIController* Controller = GetController(Context);
 	if (!IsValid(Controller))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 
-	if (bAcquireTargetOnEnter)
+	if (InstanceData.bAcquireTargetOnEnter)
 	{
 		Controller->AcquirePlayerTarget();
 	}
@@ -22,35 +26,32 @@ EStateTreeRunStatus UShooterSTTask_CombatTick::EnterState(FStateTreeExecutionCon
 	return EStateTreeRunStatus::Running;
 }
 
-EStateTreeRunStatus UShooterSTTask_CombatTick::Tick(FStateTreeExecutionContext& Context, const float DeltaTime)
+EStateTreeRunStatus FShooterSTTask_CombatTick::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
-	Super::Tick(Context, DeltaTime);
-
-	AShooterAIController* Controller = Cast<AShooterAIController>(Context.GetOwner());
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	AShooterAIController* Controller = GetController(Context);
 	if (!IsValid(Controller))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 
 	Controller->UpdateFocusOnCombatTarget();
-	Controller->MoveToCombatTarget(MoveAcceptanceRadius, true);
+	Controller->MoveToCombatTarget(InstanceData.MoveAcceptanceRadius, true);
 
 	const APawn* SelfPawn = Controller->GetPawn();
 	const APawn* TargetPawn = Controller->GetCombatTarget();
 
 	const bool bCanFire = IsValid(SelfPawn)
 		&& IsValid(TargetPawn)
-		&& FVector::Dist(SelfPawn->GetActorLocation(), TargetPawn->GetActorLocation()) <= FireDistance;
+		&& FVector::Dist(SelfPawn->GetActorLocation(), TargetPawn->GetActorLocation()) <= InstanceData.FireDistance;
 
 	Controller->SetFireEnabled(bCanFire);
 	return EStateTreeRunStatus::Running;
 }
 
-void UShooterSTTask_CombatTick::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
+void FShooterSTTask_CombatTick::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
-	Super::ExitState(Context, Transition);
-
-	if (AShooterAIController* Controller = Cast<AShooterAIController>(Context.GetOwner()))
+	if (AShooterAIController* Controller = GetController(Context))
 	{
 		Controller->SetFireEnabled(false);
 	}
