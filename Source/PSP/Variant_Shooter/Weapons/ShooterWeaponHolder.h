@@ -52,4 +52,6 @@ public:
 
 	/** Notifies the owner that the weapon cooldown has expired and it's ready to shoot again */
 	virtual void OnSemiWeaponRefire() = 0;
+
+	virtual bool UsesFirstPersonWeaponMesh() const = 0;
 };

@@ -83,6 +83,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|State")
 	void RefreshControlledAIState();
 
+	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
+	bool HasLineOfSightToActor(AActor* TargetActor) const;
+
+	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
+	bool MoveToTacticalLocation(const FVector& Location, float AcceptanceRadius = 100.0f, bool bCanStrafe = true);
+
 protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "AI|Combat")

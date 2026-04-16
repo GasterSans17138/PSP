@@ -26,12 +26,8 @@ EStateTreeRunStatus FShooterSTTask_GetWeapon::EnterState(FStateTreeExecutionCont
 		return EStateTreeRunStatus::Succeeded;
 	}
 
-	AActor* WeaponPickup = Controller->FindBestWeaponPickup(InstanceData.SearchRadius);
-	if (!IsValid(WeaponPickup))
-	{
-		return EStateTreeRunStatus::Failed;
-	}
-
+	// Try to find one, but do NOT fail the whole state if none exists right now.
+	Controller->FindBestWeaponPickup(InstanceData.SearchRadius);
 	return EStateTreeRunStatus::Running;
 }
 
@@ -60,21 +56,26 @@ EStateTreeRunStatus FShooterSTTask_GetWeapon::Tick(FStateTreeExecutionContext& C
 
 	if (bTargetInvalid)
 	{
-		if (!InstanceData.bRetrySearchIfTargetInvalid)
+		Controller->ClearWeaponTarget();
+
+		if (InstanceData.bRetrySearchIfTargetInvalid)
 		{
-			return EStateTreeRunStatus::Failed;
+			WeaponTarget = Controller->FindBestWeaponPickup(InstanceData.SearchRadius);
 		}
 
-		WeaponTarget = Controller->FindBestWeaponPickup(InstanceData.SearchRadius);
+		// Important:
+		// If there is no pickup available right now, keep the task running
+		// so the AI can retry next tick instead of freezing after a Failed state.
 		if (!IsValid(WeaponTarget))
 		{
-			return EStateTreeRunStatus::Failed;
+			return EStateTreeRunStatus::Running;
 		}
 	}
 
 	if (!Controller->MoveToWeaponTarget(InstanceData.MoveAcceptanceRadius))
 	{
-		return EStateTreeRunStatus::Failed;
+		// Same idea: don't fail hard, just keep running and retry.
+		return EStateTreeRunStatus::Running;
 	}
 
 	return EStateTreeRunStatus::Running;

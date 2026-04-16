@@ -132,25 +132,60 @@ void AShooterCharacter::DoSwitchWeapon()
 
 void AShooterCharacter::AttachWeaponMeshes(AShooterWeapon* Weapon)
 {
+	if (!IsValid(Weapon))
+	{
+		return;
+	}
+
 	const FAttachmentTransformRules AttachmentRule(EAttachmentRule::SnapToTarget, false);
 
-	// attach the weapon actor
 	Weapon->AttachToActor(this, AttachmentRule);
 
-	// attach the weapon meshes
-	Weapon->GetFirstPersonMesh()->AttachToComponent(GetFirstPersonMesh(), AttachmentRule, FirstPersonWeaponSocket);
-	Weapon->GetThirdPersonMesh()->AttachToComponent(GetMesh(), AttachmentRule, FirstPersonWeaponSocket);
-	
+	// Always attach third-person mesh to the world mesh.
+	if (USkeletalMeshComponent* ThirdPersonWeaponMesh = Weapon->GetThirdPersonMesh())
+	{
+		ThirdPersonWeaponMesh->AttachToComponent(GetMesh(), AttachmentRule, ThirdPersonWeaponSocket);
+		ThirdPersonWeaponMesh->SetHiddenInGame(false);
+	}
+
+	// Only player / first-person characters need the FP mesh.
+	if (USkeletalMeshComponent* FirstPersonWeaponMesh = Weapon->GetFirstPersonMesh())
+	{
+		if (UsesFirstPersonPresentation())
+		{
+			FirstPersonWeaponMesh->AttachToComponent(GetFirstPersonMesh(), AttachmentRule, FirstPersonWeaponSocket);
+			FirstPersonWeaponMesh->SetHiddenInGame(false);
+		}
+		else
+		{
+			FirstPersonWeaponMesh->SetHiddenInGame(true);
+		}
+	}
 }
 
 void AShooterCharacter::PlayFiringMontage(UAnimMontage* Montage)
 {
-	
+	if (!Montage)
+	{
+		return;
+	}
+
+	if (USkeletalMeshComponent* CharacterMesh = GetMesh())
+	{
+		if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance())
+		{
+			AnimInstance->Montage_Play(Montage);
+		}
+	}
 }
 
 void AShooterCharacter::AddWeaponRecoil(float Recoil)
 {
-	// apply the recoil as pitch input
+	if (!UsesFirstPersonPresentation())
+	{
+		return;
+	}
+
 	AddControllerPitchInput(Recoil);
 }
 
@@ -161,18 +196,22 @@ void AShooterCharacter::UpdateWeaponHUD(int32 CurrentAmmo, int32 MagazineSize)
 
 FVector AShooterCharacter::GetWeaponTargetLocation()
 {
-	// trace ahead from the camera viewpoint
+	UCameraComponent* AimCamera = GetAimCamera();
+	if (!IsValid(AimCamera))
+	{
+		return GetActorLocation() + (GetActorForwardVector() * MaxAimDistance);
+	}
+
 	FHitResult OutHit;
 
-	const FVector Start = GetFirstPersonCameraComponent()->GetComponentLocation();
-	const FVector End = Start + (GetFirstPersonCameraComponent()->GetForwardVector() * MaxAimDistance);
+	const FVector Start = AimCamera->GetComponentLocation();
+	const FVector End = Start + (AimCamera->GetForwardVector() * MaxAimDistance);
 
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 
 	GetWorld()->LineTraceSingleByChannel(OutHit, Start, End, ECC_Visibility, QueryParams);
 
-	// return either the impact point or the trace end
 	return OutHit.bBlockingHit ? OutHit.ImpactPoint : OutHit.TraceEnd;
 }
 
@@ -212,11 +251,13 @@ void AShooterCharacter::AddWeaponClass(const TSubclassOf<AShooterWeapon>& Weapon
 
 void AShooterCharacter::OnWeaponActivated(AShooterWeapon* Weapon)
 {
-	// update the bullet counter
 	OnBulletCountUpdated.Broadcast(Weapon->GetMagazineSize(), Weapon->GetBulletCount());
 
-	// set the character mesh AnimInstances
-	GetFirstPersonMesh()->SetAnimInstanceClass(Weapon->GetFirstPersonAnimInstanceClass());
+	if (UsesFirstPersonPresentation())
+	{
+		GetFirstPersonMesh()->SetAnimInstanceClass(Weapon->GetFirstPersonAnimInstanceClass());
+	}
+
 	GetMesh()->SetAnimInstanceClass(Weapon->GetThirdPersonAnimInstanceClass());
 }
 
@@ -228,6 +269,11 @@ void AShooterCharacter::OnWeaponDeactivated(AShooterWeapon* Weapon)
 void AShooterCharacter::OnSemiWeaponRefire()
 {
 	// unused
+}
+
+bool AShooterCharacter::UsesFirstPersonWeaponMesh() const
+{
+	return UsesFirstPersonPresentation();
 }
 
 AShooterWeapon* AShooterCharacter::FindWeaponOfType(TSubclassOf<AShooterWeapon> WeaponClass) const
@@ -280,4 +326,24 @@ void AShooterCharacter::OnRespawn()
 {
 	// destroy the character to force the PC to respawn
 	Destroy();
+}
+
+bool AShooterCharacter::UsesFirstPersonPresentation() const
+{
+	return true;
+}
+
+USkeletalMeshComponent* AShooterCharacter::GetWeaponAttachMesh() const
+{
+	return GetMesh();
+}
+
+FName AShooterCharacter::GetWeaponAttachSocket() const
+{
+	return ThirdPersonWeaponSocket;
+}
+
+UCameraComponent* AShooterCharacter::GetAimCamera() const
+{
+	return GetFirstPersonCameraComponent();
 }

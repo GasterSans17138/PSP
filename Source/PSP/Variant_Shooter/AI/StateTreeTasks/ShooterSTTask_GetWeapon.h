@@ -15,7 +15,7 @@ struct FShooterSTTask_GetWeaponInstanceData
 
 	/** Radius used to search for a weapon pickup around the AI pawn. */
 	UPROPERTY(EditAnywhere, Category = "Weapon", meta = (ClampMin = 0, Units = "cm"))
-	float SearchRadius = 3000.0f;
+	float SearchRadius = 30000.0f;
 
 	/** Acceptance radius used while moving toward the pickup. */
 	UPROPERTY(EditAnywhere, Category = "Weapon", meta = (ClampMin = 0, Units = "cm"))

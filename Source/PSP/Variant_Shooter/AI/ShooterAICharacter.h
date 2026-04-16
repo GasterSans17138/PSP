@@ -25,32 +25,51 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Squad")
 	void RefreshSquadOrder();
 
-	/** Refreshes lightweight AI state variables consumed by State Tree enter conditions. */
 	UFUNCTION(BlueprintCallable, Category = "AI|State")
 	void RefreshAIState();
 
 	UFUNCTION(BlueprintPure, Category = "AI|Squad")
 	const FShooterSquadOrder& GetCachedOrder() const { return CachedOrder; }
 
-	/** True if this AI currently has an equipped weapon. */
-	UFUNCTION(BlueprintPure, Category = "AI|State")
-	bool HasWeaponState() const { return bHasWeapon; }
-
-	/** Current equipped weapon, if any. */
 	UFUNCTION(BlueprintPure, Category = "Weapons")
 	AShooterWeapon* GetCurrentWeaponActor() const { return CurrentWeapon.Get(); }
 
-	/** Read by State Tree enter conditions. */
+	// --- AI-specific weapon holder overrides ---
+	virtual void AttachWeaponMeshes(AShooterWeapon* Weapon) override;
+	virtual void PlayFiringMontage(UAnimMontage* Montage) override;
+	virtual FVector GetWeaponTargetLocation() override;
+
+protected:
+	virtual bool UsesFirstPersonPresentation() const override;
+	
+public:
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	bool bHasWeapon = false;
 
-	/** Read by State Tree enter conditions. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	bool bHasWeaponTarget = false;
 
-	/** Read by State Tree enter conditions. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	bool bHasCombatTarget = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
+	bool bOrderIsPush = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
+	bool bOrderIsSuppress = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
+	bool bOrderIsFlank = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
+	bool bOrderIsHold = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
+	EShooterTacticalOrder CurrentTacticalOrder = EShooterTacticalOrder::None;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
+	FVector CurrentSquadMoveLocation = FVector::ZeroVector;
 
 protected:
 
@@ -59,6 +78,4 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "AI|Squad")
 	FShooterSquadOrder CachedOrder;
-
-	
 };

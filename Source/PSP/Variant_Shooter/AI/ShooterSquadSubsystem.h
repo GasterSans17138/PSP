@@ -50,4 +50,13 @@ private:
 	TMap<FName, FShooterSquadRuntime> Squads;
 
 	void CleanupNullMembers(FShooterSquadRuntime& Squad) const;
+
+	EShooterTacticalOrder ComputeTacticalOrder(
+		const TArray<TObjectPtr<UShooterSquadComponent>>& Members,
+		const UShooterSquadComponent* Requester) const;
+
+	FVector ComputeMoveLocation(
+		const UShooterSquadComponent* Requester,
+		const AActor* TargetActor,
+		EShooterTacticalOrder TacticalOrder) const;
 };

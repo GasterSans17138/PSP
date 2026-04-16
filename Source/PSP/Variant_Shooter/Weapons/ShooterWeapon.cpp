@@ -194,16 +194,30 @@ void AShooterWeapon::FireProjectile(const FVector& TargetLocation)
 
 FTransform AShooterWeapon::CalculateProjectileSpawnTransform(const FVector& TargetLocation) const
 {
-	// find the muzzle location
-	const FVector MuzzleLoc = FirstPersonMesh->GetSocketLocation(MuzzleSocketName);
+	USkeletalMeshComponent* SourceMesh = nullptr;
 
-	// calculate the spawn location ahead of the muzzle
+	if (WeaponOwner && WeaponOwner->UsesFirstPersonWeaponMesh())
+	{
+		SourceMesh = FirstPersonMesh;
+	}
+	else
+	{
+		SourceMesh = ThirdPersonMesh;
+	}
+
+	if (!IsValid(SourceMesh) || !SourceMesh->DoesSocketExist(MuzzleSocketName))
+	{
+		const FVector FallbackLoc = GetActorLocation();
+		const FRotator FallbackRot = UKismetMathLibrary::FindLookAtRotation(FallbackLoc, TargetLocation);
+		return FTransform(FallbackRot, FallbackLoc, FVector::OneVector);
+	}
+
+	const FVector MuzzleLoc = SourceMesh->GetSocketLocation(MuzzleSocketName);
 	const FVector SpawnLoc = MuzzleLoc + ((TargetLocation - MuzzleLoc).GetSafeNormal() * MuzzleOffset);
+	const FRotator AimRot = UKismetMathLibrary::FindLookAtRotation(
+		SpawnLoc,
+		TargetLocation + (UKismetMathLibrary::RandomUnitVector() * AimVariance));
 
-	// find the aim rotation vector while applying some variance to the target 
-	const FRotator AimRot = UKismetMathLibrary::FindLookAtRotation(SpawnLoc, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * AimVariance));
-
-	// return the built transform
 	return FTransform(AimRot, SpawnLoc, FVector::OneVector);
 }
 

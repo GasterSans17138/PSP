@@ -9,7 +9,7 @@ class UShooterSquadSubsystem;
 
 /**
  * Squad component consumed by State Tree tasks/evaluators.
- * It exposes a light API so BP State Trees can query and react to squad orders.
+ * It exposes a light API so BP/C++ State Trees can query squad orders.
  */
 UCLASS(ClassGroup=(AI), meta=(BlueprintSpawnableComponent))
 class PSP_API UShooterSquadComponent : public UActorComponent
@@ -29,7 +29,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Squad")
 	FName SquadId = TEXT("EnemySquadA");
 
-	/** Combat role used to compute the order position around target. */
+	/** Profile role used by squad logic as a preference. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Squad")
 	EShooterSquadRole Role = EShooterSquadRole::Assaulter;
 

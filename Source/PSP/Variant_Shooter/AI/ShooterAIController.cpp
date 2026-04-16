@@ -7,6 +7,8 @@
 #include "Components/StateTreeAIComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "DrawDebugHelpers.h"
+#include "Engine/World.h"
 
 AShooterAIController::AShooterAIController()
 {
@@ -115,7 +117,7 @@ void AShooterAIController::UpdateFocusOnCombatTarget()
 bool AShooterAIController::HasUsableWeapon() const
 {
 	const AShooterAICharacter* ShooterAI = Cast<AShooterAICharacter>(GetPawn());
-	return IsValid(ShooterAI) && ShooterAI->HasWeaponState();
+	return IsValid(ShooterAI) && ShooterAI->GetCurrentWeaponActor() != nullptr;
 }
 
 AActor* AShooterAIController::FindBestWeaponPickup(float SearchRadius)
@@ -210,4 +212,52 @@ void AShooterAIController::RefreshControlledAIState()
 	{
 		ShooterAI->RefreshAIState();
 	}
+}
+
+bool AShooterAIController::HasLineOfSightToActor(AActor* TargetActor) const
+{
+	const APawn* SelfPawn = GetPawn();
+	if (!IsValid(SelfPawn) || !IsValid(TargetActor))
+	{
+		return false;
+	}
+
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(SelfPawn);
+	QueryParams.AddIgnoredActor(TargetActor);
+
+	const FVector Start = SelfPawn->GetActorLocation() + FVector(0.0f, 0.0f, 60.0f);
+	const FVector End = TargetActor->GetActorLocation() + FVector(0.0f, 0.0f, 60.0f);
+
+	const bool bBlockingHit = GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		Start,
+		End,
+		ECC_Visibility,
+		QueryParams);
+
+	if (!bBlockingHit)
+	{
+		return true;
+	}
+
+	return Hit.GetActor() == TargetActor;
+}
+
+bool AShooterAIController::MoveToTacticalLocation(const FVector& Location, float AcceptanceRadius, bool bCanStrafe)
+{
+	if (Location.IsNearlyZero())
+	{
+		return false;
+	}
+
+	FAIMoveRequest MoveRequest;
+	MoveRequest.SetGoalLocation(Location);
+	MoveRequest.SetAcceptanceRadius(AcceptanceRadius);
+	MoveRequest.SetUsePathfinding(true);
+	MoveRequest.SetCanStrafe(bCanStrafe);
+
+	MoveTo(MoveRequest);
+	return true;
 }
