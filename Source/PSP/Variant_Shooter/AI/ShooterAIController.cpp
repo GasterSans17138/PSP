@@ -9,6 +9,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
+#include "ShooterCoverPoint.h"
 
 AShooterAIController::AShooterAIController()
 {
@@ -260,4 +261,24 @@ bool AShooterAIController::MoveToTacticalLocation(const FVector& Location, float
 
 	MoveTo(MoveRequest);
 	return true;
+}
+
+void AShooterAIController::SetCurrentCoverPoint(AShooterCoverPoint* NewCoverPoint)
+{
+	CurrentCoverPoint = NewCoverPoint;
+}
+
+void AShooterAIController::ClearCurrentCoverPoint()
+{
+	CurrentCoverPoint.Reset();
+}
+
+bool AShooterAIController::MoveToCoverPoint(float AcceptanceRadius, bool bCanStrafe)
+{
+	if (!CurrentCoverPoint.IsValid())
+	{
+		return false;
+	}
+
+	return MoveToTacticalLocation(CurrentCoverPoint->GetCoverLocation(), AcceptanceRadius, bCanStrafe);
 }

@@ -39,6 +39,7 @@ void AShooterAICharacter::RefreshSquadOrder()
 		(CurrentTacticalOrder == EShooterTacticalOrder::FlankLeft) ||
 		(CurrentTacticalOrder == EShooterTacticalOrder::FlankRight);
 	bOrderIsHold = (CurrentTacticalOrder == EShooterTacticalOrder::Hold);
+	bOrderIsTakeCover = (CurrentTacticalOrder == EShooterTacticalOrder::TakeCover);
 }
 
 void AShooterAICharacter::RefreshAIState()
@@ -54,6 +55,37 @@ void AShooterAICharacter::RefreshAIState()
 	{
 		bHasCombatTarget = false;
 		bHasWeaponTarget = false;
+	}
+
+	if (IsValid(SquadComponent))
+	{
+		FShooterSquadMemberRuntimeState RuntimeState;
+		RuntimeState.bHasWeapon = bHasWeapon;
+		RuntimeState.bHasLineOfSight = false;
+		RuntimeState.bReachedTacticalMoveLocation = false;
+		RuntimeState.DistanceToTarget = 0.0f;
+
+		if (const AShooterAIController* AIController = Cast<AShooterAIController>(GetController()))
+		{
+			if (AActor* Target = AIController->GetCombatTarget())
+			{
+				RuntimeState.bHasLineOfSight = AIController->HasLineOfSightToActor(Target);
+				RuntimeState.DistanceToTarget = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
+			}
+		}
+
+		if (!CurrentSquadMoveLocation.IsNearlyZero())
+		{
+			const float DistToMove = FVector::Dist(GetActorLocation(), CurrentSquadMoveLocation);
+			const float ReachedTolerance = 450.0f;
+			RuntimeState.bReachedTacticalMoveLocation = DistToMove <= ReachedTolerance;
+		}
+		else
+		{
+			RuntimeState.bReachedTacticalMoveLocation = false;
+		}
+
+		SquadComponent->SetRuntimeState(RuntimeState);
 	}
 
 	RefreshSquadOrder();

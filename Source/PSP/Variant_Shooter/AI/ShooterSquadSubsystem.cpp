@@ -15,6 +15,7 @@ void UShooterSquadSubsystem::RegisterMember(FName SquadId, UShooterSquadComponen
 	if (!Squad.Members.Contains(Member))
 	{
 		Squad.Members.Add(Member);
+		ReassignRoles(Squad);
 	}
 }
 
@@ -33,6 +34,10 @@ void UShooterSquadSubsystem::UnregisterMember(FName SquadId, UShooterSquadCompon
 		if (Squad->Members.IsEmpty())
 		{
 			Squads.Remove(SquadId);
+		}
+		else
+		{
+			ReassignRoles(*Squad);
 		}
 	}
 }
@@ -77,6 +82,13 @@ FShooterSquadOrder UShooterSquadSubsystem::BuildOrder(FName SquadId, const UShoo
 	Order.MoveLocation = ComputeMoveLocation(Requester, Order.TargetActor, Order.TacticalOrder);
 	Order.AttackLocation = Order.TargetActor->GetActorLocation();
 
+	if (const AActor* RequesterActor = Requester->GetOwner())
+	{
+		Order.bReachedMoveLocation =
+			!Order.MoveLocation.IsNearlyZero() &&
+			FVector::Dist(RequesterActor->GetActorLocation(), Order.MoveLocation) <= 300.0f;
+	}
+
 	return Order;
 }
 
@@ -86,6 +98,53 @@ void UShooterSquadSubsystem::CleanupNullMembers(FShooterSquadRuntime& Squad) con
 	{
 		return !IsValid(Member);
 	});
+}
+
+void UShooterSquadSubsystem::ReassignRoles(FShooterSquadRuntime& Squad) const
+{
+	TArray<UShooterSquadComponent*> ValidMembers;
+	ValidMembers.Reserve(Squad.Members.Num());
+
+	for (UShooterSquadComponent* Member : Squad.Members)
+	{
+		if (IsValid(Member))
+		{
+			ValidMembers.Add(Member);
+		}
+	}
+
+	ValidMembers.Sort([](const UShooterSquadComponent& A, const UShooterSquadComponent& B)
+	{
+		const AActor* OwnerA = A.GetOwner();
+		const AActor* OwnerB = B.GetOwner();
+
+		const FString NameA = IsValid(OwnerA) ? OwnerA->GetName() : FString();
+		const FString NameB = IsValid(OwnerB) ? OwnerB->GetName() : FString();
+		return NameA < NameB;
+	});
+
+	for (int32 Index = 0; Index < ValidMembers.Num(); ++Index)
+	{
+		ValidMembers[Index]->SetRole(AssignRoleForMemberIndex(Index));
+	}
+}
+
+EShooterSquadRole UShooterSquadSubsystem::AssignRoleForMemberIndex(int32 MemberIndex) const
+{
+	switch (MemberIndex)
+	{
+	case 0:
+		return EShooterSquadRole::Suppressor;
+
+	case 1:
+		return EShooterSquadRole::Breacher;
+
+	case 2:
+		return EShooterSquadRole::Flanker;
+
+	default:
+		return EShooterSquadRole::Assaulter;
+	}
 }
 
 EShooterTacticalOrder UShooterSquadSubsystem::ComputeTacticalOrder(
@@ -108,12 +167,11 @@ EShooterTacticalOrder UShooterSquadSubsystem::ComputeTacticalOrder(
 		}
 	}
 
-	if (ValidMembers.Num() == 0)
+	if (ValidMembers.IsEmpty())
 	{
 		return EShooterTacticalOrder::None;
 	}
 
-	// Sort to make role assignment stable and deterministic.
 	ValidMembers.Sort([](const UShooterSquadComponent& A, const UShooterSquadComponent& B)
 	{
 		const AActor* OwnerA = A.GetOwner();
@@ -124,49 +182,79 @@ EShooterTacticalOrder UShooterSquadSubsystem::ComputeTacticalOrder(
 		return NameA < NameB;
 	});
 
-	const int32 MemberIndex = ValidMembers.IndexOfByKey(Requester);
-	if (MemberIndex == INDEX_NONE)
+	AActor* SharedTarget = nullptr;
+	if (const FShooterSquadRuntime* Squad = Squads.Find(Requester->GetSquadId()))
 	{
-		return EShooterTacticalOrder::None;
+		SharedTarget = Squad->SharedTarget;
 	}
 
-	// Profile role can override default slot behavior.
+	return ComputeDynamicTacticalOrder(ValidMembers, Requester, SharedTarget);
+}
+
+EShooterTacticalOrder UShooterSquadSubsystem::ComputeDynamicTacticalOrder(
+	const TArray<UShooterSquadComponent*>& ValidMembers,
+	const UShooterSquadComponent* Requester,
+	AActor* TargetActor) const
+{
+	if (!Requester || !IsValid(TargetActor))
+	{
+		return EShooterTacticalOrder::Hold;
+	}
+
+	const FShooterSquadMemberRuntimeState& MyState = Requester->GetRuntimeState();
+
 	switch (Requester->GetRole())
 	{
-	case EShooterSquadRole::Suppressor:
-		return EShooterTacticalOrder::Suppress;
-
 	case EShooterSquadRole::Flanker:
-		return (MemberIndex % 2 == 0)
-			? EShooterTacticalOrder::FlankLeft
-			: EShooterTacticalOrder::FlankRight;
-
-	case EShooterSquadRole::Breacher:
-		return EShooterTacticalOrder::Push;
-
-	default:
-		break;
-	}
-
-	// Generic fallback distribution.
-	if (MemberIndex == 0)
 	{
-		return EShooterTacticalOrder::Suppress;
-	}
-	if (MemberIndex == 1)
-	{
-		return EShooterTacticalOrder::Push;
-	}
-	if (MemberIndex == 2)
-	{
+		if (MyState.bReachedTacticalMoveLocation && MyState.bHasLineOfSight)
+		{
+			return EShooterTacticalOrder::Suppress;
+		}
+
 		return EShooterTacticalOrder::FlankLeft;
 	}
-	if (MemberIndex == 3)
+
+	case EShooterSquadRole::Breacher:
 	{
-		return EShooterTacticalOrder::FlankRight;
+		if (MyState.DistanceToTarget > 550.0f)
+		{
+			return EShooterTacticalOrder::Push;
+		}
+
+		if (MyState.bHasLineOfSight)
+		{
+			return EShooterTacticalOrder::Hold;
+		}
+
+		return EShooterTacticalOrder::Push;
 	}
 
-	return EShooterTacticalOrder::Hold;
+	case EShooterSquadRole::Suppressor:
+		{
+			if (!MyState.bHasLineOfSight)
+			{
+				return EShooterTacticalOrder::TakeCover;
+			}
+			return EShooterTacticalOrder::Suppress;
+		}
+
+	case EShooterSquadRole::Assaulter:
+	default:
+	{
+		if (MyState.DistanceToTarget > 1100.0f)
+		{
+			return EShooterTacticalOrder::Push;
+		}
+
+		if (MyState.bHasLineOfSight)
+		{
+			return EShooterTacticalOrder::Suppress;
+		}
+
+		return EShooterTacticalOrder::Hold;
+	}
+	}
 }
 
 FVector UShooterSquadSubsystem::ComputeMoveLocation(
@@ -187,41 +275,49 @@ FVector UShooterSquadSubsystem::ComputeMoveLocation(
 
 	const FVector TargetLocation = TargetActor->GetActorLocation();
 
-	FVector Forward = TargetActor->GetActorForwardVector().GetSafeNormal();
-	if (Forward.IsNearlyZero())
+	FVector ToRequester = (RequesterActor->GetActorLocation() - TargetLocation).GetSafeNormal();
+	if (ToRequester.IsNearlyZero())
 	{
-		Forward = FVector::ForwardVector;
+		ToRequester = FVector::BackwardVector;
 	}
 
-	const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
+	const FVector LocalRight = FVector::CrossProduct(FVector::UpVector, ToRequester).GetSafeNormal();
+
+	// Keep player forward only for flank logic if you want the flank to react to player facing.
+	FVector TargetForward = TargetActor->GetActorForwardVector().GetSafeNormal();
+	if (TargetForward.IsNearlyZero())
+	{
+		TargetForward = FVector::ForwardVector;
+	}
+
+	const FVector TargetRight = FVector::CrossProduct(FVector::UpVector, TargetForward).GetSafeNormal();
 
 	const float BaseDist = Requester->GetPreferredEngagementDistance();
-	const float PushDist = FMath::Max(150.0f, BaseDist * 0.45f);
-	const float SuppressDist = BaseDist * 1.15f;
-	const float FlankForwardDist = BaseDist * 0.85f;
-	const float FlankSideDist = BaseDist * 0.9f;
 
 	switch (TacticalOrder)
 	{
 	case EShooterTacticalOrder::Push:
-		return TargetLocation + (Forward * PushDist);
+		// Close frontal position from current approach side.
+		return TargetLocation + (ToRequester * FMath::Max(250.0f, BaseDist * 0.45f));
 
 	case EShooterTacticalOrder::Suppress:
-		return TargetLocation + (Forward * SuppressDist);
-
-	case EShooterTacticalOrder::FlankLeft:
-		return TargetLocation - (Right * FlankSideDist);
-
-	case EShooterTacticalOrder::FlankRight:
-		return TargetLocation + (Right * FlankSideDist);
+		// Farther frontal support, slightly offset from current side.
+		return TargetLocation + (ToRequester * (BaseDist * 1.0f)) + (LocalRight * 180.0f);
 
 	case EShooterTacticalOrder::Hold:
-		return RequesterActor->GetActorLocation();
+		// Mid frontal support, opposite offset from current side.
+		return TargetLocation + (ToRequester * (BaseDist * 0.8f)) - (LocalRight * 180.0f);
+
+	case EShooterTacticalOrder::FlankLeft:
+		return TargetLocation - (TargetRight * (BaseDist * 0.55f)) - (TargetForward * (BaseDist * 0.25f));
+
+	case EShooterTacticalOrder::FlankRight:
+		return TargetLocation + (TargetRight * (BaseDist * 0.55f)) - (TargetForward * (BaseDist * 0.25f));
 
 	case EShooterTacticalOrder::Regroup:
-		return TargetLocation + (Forward * (BaseDist * 1.3f));
+		return TargetLocation + (ToRequester * (BaseDist * 1.3f));
 
 	default:
-		return TargetLocation + (Forward * BaseDist);
+		return TargetLocation + (ToRequester * BaseDist);
 	}
 }

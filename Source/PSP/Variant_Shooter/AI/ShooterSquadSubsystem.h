@@ -21,7 +21,7 @@ struct FShooterSquadRuntime
 
 /**
  * World subsystem storing squad membership and shared target data.
- * Shooter AI State Trees can pull orders from it every tick.
+ * It also assigns tactical orders to members.
  */
 UCLASS()
 class PSP_API UShooterSquadSubsystem : public UWorldSubsystem
@@ -30,18 +30,13 @@ class PSP_API UShooterSquadSubsystem : public UWorldSubsystem
 
 public:
 
-	/** Registers an AI unit in a squad. */
 	void RegisterMember(FName SquadId, UShooterSquadComponent* Member);
-
-	/** Unregisters an AI unit from a squad. */
 	void UnregisterMember(FName SquadId, UShooterSquadComponent* Member);
 
-	/** Updates the shared squad target. */
-	UFUNCTION(BlueprintCallable, Category = "Squad")
+	UFUNCTION(BlueprintCallable, Category="Squad")
 	void SetSquadTarget(FName SquadId, AActor* NewTarget);
 
-	/** Builds an order for a unit based on the shared target and role. */
-	UFUNCTION(BlueprintCallable, Category = "Squad")
+	UFUNCTION(BlueprintCallable, Category="Squad")
 	FShooterSquadOrder BuildOrder(FName SquadId, const UShooterSquadComponent* Requester) const;
 
 private:
@@ -50,10 +45,18 @@ private:
 	TMap<FName, FShooterSquadRuntime> Squads;
 
 	void CleanupNullMembers(FShooterSquadRuntime& Squad) const;
+	void ReassignRoles(FShooterSquadRuntime& Squad) const;
+
+	EShooterSquadRole AssignRoleForMemberIndex(int32 MemberIndex) const;
 
 	EShooterTacticalOrder ComputeTacticalOrder(
 		const TArray<TObjectPtr<UShooterSquadComponent>>& Members,
 		const UShooterSquadComponent* Requester) const;
+
+	EShooterTacticalOrder ComputeDynamicTacticalOrder(
+		const TArray<UShooterSquadComponent*>& ValidMembers,
+		const UShooterSquadComponent* Requester,
+		AActor* TargetActor) const;
 
 	FVector ComputeMoveLocation(
 		const UShooterSquadComponent* Requester,

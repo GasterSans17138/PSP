@@ -37,6 +37,33 @@ struct FShooterSTTask_HoldInstanceData
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	bool bAcquireTargetIfMissing = true;
+
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	bool bRequireLineOfSightToFire = true;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "s"))
+	float RepathInterval = 0.75f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "s"))
+	float LoseSightRepositionDelay = 0.9f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "cm"))
+	float LastSeenAcceptanceRadius = 120.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	FVector LastSeenTargetLocation = FVector::ZeroVector;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	bool bHasLastSeenTargetLocation = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	float TimeSinceLostSight = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	float StateEnterTime = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	float LastMoveRequestTime = -1000.0f;
 };
 
 USTRUCT(meta = (DisplayName = "Shooter: Hold"))

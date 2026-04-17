@@ -14,50 +14,65 @@ struct FShooterSTTask_FlankInstanceData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "cm"))
-	float MinFireDistance = 150.0f;
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="cm"))
+	float MinFireDistance = 150.f;
 
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "cm"))
-	float MaxFireDistance = 1500.0f;
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="cm"))
+	float MaxFireDistance = 1500.f;
 
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "cm"))
-	float MoveAcceptanceRadius = 125.0f;
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="cm"))
+	float MoveAcceptanceRadius = 125.f;
 
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "s"))
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="s"))
 	float InitialReactionDelay = 0.45f;
 
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "s"))
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="s"))
 	float BurstDuration = 0.35f;
 
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "s"))
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="s"))
 	float PauseBetweenBursts = 0.45f;
 
-	UPROPERTY(EditAnywhere, Category = "Combat")
+	UPROPERTY(EditAnywhere, Category="Combat")
 	bool bAcquireTargetIfMissing = true;
 
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "cm"))
-	float RecomputeIfTargetMovedDistance = 250.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = 0, Units = "s"))
-	float RepathInterval = 0.75f;
-
-	UPROPERTY(EditAnywhere, Category = "Combat")
+	UPROPERTY(EditAnywhere, Category="Combat")
 	bool bRequireLineOfSightToFire = true;
 
-	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="cm"))
+	float RecomputeIfTargetMovedDistance = 250.0f;
+
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="s"))
+	float RepathInterval = 0.7f;
+
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="s"))
+	float LoseSightRepositionDelay = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category="Combat", meta=(ClampMin=0, Units="s"))
+	float FlankHoldTimeBeforeReposition = 1.2f;
+
+	UPROPERTY(VisibleAnywhere, Category="Runtime")
 	FVector LockedMoveLocation = FVector::ZeroVector;
 
-	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	UPROPERTY(VisibleAnywhere, Category="Runtime")
 	FVector LastTargetLocation = FVector::ZeroVector;
 
-	UPROPERTY(VisibleAnywhere, Category = "Runtime")
-	float StateEnterTime = 0.0f;
+	UPROPERTY(VisibleAnywhere, Category="Runtime")
+	FVector LastSeenTargetLocation = FVector::ZeroVector;
 
-	UPROPERTY(VisibleAnywhere, Category = "Runtime")
-	float LastMoveRequestTime = -1000.0f;
+	UPROPERTY(VisibleAnywhere, Category="Runtime")
+	bool bHasLastSeenTargetLocation = false;
+
+	UPROPERTY(VisibleAnywhere, Category="Runtime")
+	float TimeSinceLostSight = 0.f;
+
+	UPROPERTY(VisibleAnywhere, Category="Runtime")
+	float StateEnterTime = 0.f;
+
+	UPROPERTY(VisibleAnywhere, Category="Runtime")
+	float LastMoveRequestTime = -1000.f;
 };
 
-USTRUCT(meta = (DisplayName = "Shooter: Flank"))
+USTRUCT(meta=(DisplayName="Shooter: Flank"))
 struct PSP_API FShooterSTTask_Flank : public FStateTreeTaskCommonBase
 {
 	GENERATED_BODY()
@@ -66,9 +81,9 @@ struct PSP_API FShooterSTTask_Flank : public FStateTreeTaskCommonBase
 
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 
-	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult&) const override;
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
-	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult&) const override;
 
 private:
 	AShooterAIController* GetController(FStateTreeExecutionContext& Context) const;

@@ -2,7 +2,6 @@
 #include "ShooterAIController.h"
 #include "ShooterAICharacter.h"
 #include "ShooterSquadComponent.h"
-#include "ShooterSquadTypes.h"
 #include "StateTreeExecutionContext.h"
 #include "GameFramework/Pawn.h"
 
@@ -13,127 +12,232 @@ AShooterAIController* FShooterSTTask_Push::GetController(FStateTreeExecutionCont
 
 AShooterAICharacter* FShooterSTTask_Push::GetAICharacter(FStateTreeExecutionContext& Context) const
 {
-	if (AShooterAIController* Controller = GetController(Context))
+	if (AShooterAIController* C = GetController(Context))
 	{
-		return Cast<AShooterAICharacter>(Controller->GetPawn());
+		return Cast<AShooterAICharacter>(C->GetPawn());
 	}
 	return nullptr;
 }
 
-EStateTreeRunStatus FShooterSTTask_Push::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+EStateTreeRunStatus FShooterSTTask_Push::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult&) const
 {
-	AShooterAIController* Controller = GetController(Context);
-	AShooterAICharacter* AICharacter = GetAICharacter(Context);
-	if (!IsValid(Controller) || !IsValid(AICharacter))
+	FInstanceDataType& Data = Context.GetInstanceData(*this);
+
+	AShooterAIController* C = GetController(Context);
+	AShooterAICharacter* AIChar = GetAICharacter(Context);
+	if (!IsValid(C) || !IsValid(AIChar))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 
-	if (const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-		InstanceData.bAcquireTargetIfMissing && !IsValid(Controller->GetCombatTarget()))
+	if (Data.bAcquireTargetIfMissing && !IsValid(C->GetCombatTarget()))
 	{
-		Controller->AcquirePlayerTarget();
+		C->AcquirePlayerTarget();
 	}
 
-	AICharacter->RefreshAIState();
-	AICharacter->RefreshSquadOrder();
+	AIChar->RefreshAIState();
+	AIChar->RefreshSquadOrder();
 
-	if (UShooterSquadComponent* SquadComp = Controller->GetControlledSquadComponent())
+	if (UShooterSquadComponent* SquadComp = C->GetControlledSquadComponent())
 	{
-		SquadComp->BroadcastTarget(Controller->GetCombatTarget());
-		AICharacter->RefreshSquadOrder();
+		SquadComp->BroadcastTarget(C->GetCombatTarget());
+		AIChar->RefreshSquadOrder();
 	}
 
-	Controller->SetFireEnabled(false);
+	Data.StateEnterTime = C->GetWorld()->GetTimeSeconds();
+	Data.LastMoveRequestTime = -1000.f;
+	Data.TimeSinceLostSight = 0.f;
+	Data.bHasLastSeenTargetLocation = false;
+	Data.LockedMoveLocation = AIChar->GetCachedOrder().MoveLocation;
+
+	if (AActor* Target = C->GetCombatTarget())
+	{
+		Data.LastSeenTargetLocation = Target->GetActorLocation();
+		Data.LastTargetLocation = Target->GetActorLocation();
+		Data.bHasLastSeenTargetLocation = true;
+	}
+
+	C->SetFireEnabled(false);
 	return EStateTreeRunStatus::Running;
 }
 
 EStateTreeRunStatus FShooterSTTask_Push::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
-	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	FInstanceDataType& Data = Context.GetInstanceData(*this);
 
-	AShooterAIController* Controller = GetController(Context);
-	AShooterAICharacter* AICharacter = GetAICharacter(Context);
-	if (!IsValid(Controller) || !IsValid(AICharacter))
+	AShooterAIController* C = GetController(Context);
+	AShooterAICharacter* AIChar = GetAICharacter(Context);
+	if (!IsValid(C) || !IsValid(AIChar))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 
-	if (InstanceData.bAcquireTargetIfMissing && !IsValid(Controller->GetCombatTarget()))
+	// Reacquire target if needed
+	if (Data.bAcquireTargetIfMissing && !IsValid(C->GetCombatTarget()))
 	{
-		Controller->AcquirePlayerTarget();
+		C->AcquirePlayerTarget();
 	}
 
-	AICharacter->RefreshAIState();
-	AICharacter->RefreshSquadOrder();
+	// Refresh AI + squad
+	AIChar->RefreshAIState();
+	AIChar->RefreshSquadOrder();
 
-	if (UShooterSquadComponent* SquadComp = Controller->GetControlledSquadComponent())
+	if (!AIChar->bOrderIsPush)
 	{
-		SquadComp->BroadcastTarget(Controller->GetCombatTarget());
-		AICharacter->RefreshSquadOrder();
+		C->SetFireEnabled(false);
+		return EStateTreeRunStatus::Succeeded;
+	}
+	
+	if (UShooterSquadComponent* SquadComp = C->GetControlledSquadComponent())
+	{
+		SquadComp->BroadcastTarget(C->GetCombatTarget());
+		AIChar->RefreshSquadOrder();
 	}
 
-	AActor* TargetActor = AICharacter->GetCachedOrder().TargetActor;
-	if (!IsValid(TargetActor))
+	// Get target
+	AActor* Target = AIChar->GetCachedOrder().TargetActor;
+	if (!IsValid(Target))
 	{
-		TargetActor = Controller->GetCombatTarget();
+		Target = C->GetCombatTarget();
 	}
 
-	if (!IsValid(TargetActor))
+	if (!IsValid(Target))
 	{
-		Controller->SetFireEnabled(false);
+		C->SetFireEnabled(false);
 		return EStateTreeRunStatus::Running;
 	}
 
-	const APawn* SelfPawn = Controller->GetPawn();
+	const APawn* SelfPawn = C->GetPawn();
 	if (!IsValid(SelfPawn))
 	{
-		Controller->SetFireEnabled(false);
+		C->SetFireEnabled(false);
 		return EStateTreeRunStatus::Failed;
 	}
 
-	Controller->SetFocus(TargetActor);
+	C->SetFocus(Target);
 
-	if (!AICharacter->GetCachedOrder().MoveLocation.IsNearlyZero())
+	const float Time = C->GetWorld()->GetTimeSeconds();
+	const FVector TargetLoc = Target->GetActorLocation();
+	const FVector SelfLoc = SelfPawn->GetActorLocation();
+
+	// -----------------------------
+	//  LOCKED MOVE LOCATION FIX
+	// -----------------------------
+	const bool bTargetMovedEnough =
+		FVector::DistSquared(TargetLoc, Data.LastTargetLocation) >
+		FMath::Square(Data.RecomputeIfTargetMovedDistance);
+
+	if (bTargetMovedEnough)
 	{
-		Controller->MoveToLocation(
-			AICharacter->GetCachedOrder().MoveLocation,
-			InstanceData.MoveAcceptanceRadius,
-			true, true, false, true, nullptr, true);
+		Data.LockedMoveLocation = AIChar->GetCachedOrder().MoveLocation;
+		Data.LastTargetLocation = TargetLoc;
+	}
+
+	// -----------------------------
+	//  LOS + MEMORY
+	// -----------------------------
+	bool bHasLOS = !Data.bRequireLineOfSightToFire || C->HasLineOfSightToActor(Target);
+
+	if (bHasLOS)
+	{
+		Data.TimeSinceLostSight = 0.f;
+		Data.LastSeenTargetLocation = TargetLoc;
+		Data.bHasLastSeenTargetLocation = true;
 	}
 	else
 	{
-		Controller->MoveToCombatTarget(InstanceData.MoveAcceptanceRadius, true);
+		Data.TimeSinceLostSight += DeltaTime;
 	}
 
-	const float DistanceToTarget = FVector::Dist(SelfPawn->GetActorLocation(), TargetActor->GetActorLocation());
-	const bool bInFireRange =
-		DistanceToTarget >= InstanceData.MinFireDistance &&
-		DistanceToTarget <= InstanceData.MaxFireDistance;
+	// -----------------------------
+	//  LOST SIGHT → PUSH LAST SEEN
+	// -----------------------------
+	const bool bShouldPushLastSeen =
+		!bHasLOS &&
+		Data.bHasLastSeenTargetLocation &&
+		Data.TimeSinceLostSight >= Data.LoseSightRepositionDelay;
 
-	const float TimeSeconds = Controller->GetWorld()->GetTimeSeconds();
-	const float PhaseTime = TimeSeconds - InstanceData.InitialReactionDelay;
-
-	bool bShouldFire = false;
-	if (TimeSeconds >= InstanceData.InitialReactionDelay && bInFireRange)
+	if (bShouldPushLastSeen)
 	{
-		const float CycleDuration = InstanceData.BurstDuration + InstanceData.PauseBetweenBursts;
-		if (CycleDuration > KINDA_SMALL_NUMBER)
+		if (Time - Data.LastMoveRequestTime >= Data.RepathInterval)
 		{
-			const float CycleTime = FMath::Fmod(PhaseTime, CycleDuration);
-			bShouldFire = (CycleTime <= InstanceData.BurstDuration);
+			if (C->MoveToTacticalLocation(Data.LastSeenTargetLocation, 100.f, true))
+			{
+				Data.LastMoveRequestTime = Time;
+			}
+		}
+
+		C->SetFireEnabled(false);
+		return EStateTreeRunStatus::Running;
+	}
+
+	// -----------------------------
+	//  NORMAL PUSH (STABLE)
+	// -----------------------------
+	const float DistanceToTarget = FVector::Dist(SelfLoc, TargetLoc);
+
+	// Stop push if too close
+	const bool bTooCloseToPush = DistanceToTarget <= Data.StopPushDistance;
+
+	if (bTooCloseToPush)
+	{
+		C->StopMovement();
+	}
+	else
+	{
+		const FVector PushMoveLocation = Data.LockedMoveLocation;
+
+		if (!PushMoveLocation.IsNearlyZero())
+		{
+			if (Time - Data.LastMoveRequestTime >= Data.RepathInterval)
+			{
+				if (C->MoveToTacticalLocation(PushMoveLocation, Data.MoveAcceptanceRadius, true))
+				{
+					Data.LastMoveRequestTime = Time;
+				}
+			}
+		}
+		else
+		{
+			if (Time - Data.LastMoveRequestTime >= Data.RepathInterval)
+			{
+				if (C->MoveToCombatTarget(Data.MoveAcceptanceRadius, true))
+				{
+					Data.LastMoveRequestTime = Time;
+				}
+			}
 		}
 	}
 
-	Controller->SetFireEnabled(bShouldFire);
+	// -----------------------------
+	//  FIRE LOGIC
+	// -----------------------------
+	const float Dist = FVector::Dist(SelfLoc, TargetLoc);
+	const bool bInRange = Dist >= Data.MinFireDistance && Dist <= Data.MaxFireDistance;
+
+	const float Elapsed = Time - Data.StateEnterTime;
+
+	bool bFire = false;
+	if (Elapsed >= Data.InitialReactionDelay && bInRange && bHasLOS)
+	{
+		const float Phase = Elapsed - Data.InitialReactionDelay;
+		const float Cycle = Data.BurstDuration + Data.PauseBetweenBursts;
+
+		if (Cycle > KINDA_SMALL_NUMBER)
+		{
+			bFire = FMath::Fmod(Phase, Cycle) <= Data.BurstDuration;
+		}
+	}
+
+	C->SetFireEnabled(bFire);
 	return EStateTreeRunStatus::Running;
 }
 
-void FShooterSTTask_Push::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+void FShooterSTTask_Push::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult&) const
 {
-	if (AShooterAIController* Controller = GetController(Context))
+	if (AShooterAIController* C = GetController(Context))
 	{
-		Controller->SetFireEnabled(false);
-		Controller->ClearFocus(EAIFocusPriority::Gameplay);
+		C->SetFireEnabled(false);
+		C->ClearFocus(EAIFocusPriority::Gameplay);
 	}
 }

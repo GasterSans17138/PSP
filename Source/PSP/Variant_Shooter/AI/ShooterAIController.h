@@ -7,6 +7,7 @@
 class UStateTreeAIComponent;
 class UShooterSquadComponent;
 class AShooterCharacter;
+class AShooterCoverPoint;
 
 /**
  * AI controller preconfigured with a StateTree AI component.
@@ -89,6 +90,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	bool MoveToTacticalLocation(const FVector& Location, float AcceptanceRadius = 100.0f, bool bCanStrafe = true);
 
+	UFUNCTION(BlueprintCallable, Category="AI|Cover")
+	AShooterCoverPoint* GetCurrentCoverPoint() const { return CurrentCoverPoint.Get(); }
+
+	UFUNCTION(BlueprintCallable, Category="AI|Cover")
+	void SetCurrentCoverPoint(AShooterCoverPoint* NewCoverPoint);
+
+	UFUNCTION(BlueprintCallable, Category="AI|Cover")
+	void ClearCurrentCoverPoint();
+
+	UFUNCTION(BlueprintCallable, Category="AI|Cover")
+	bool MoveToCoverPoint(float AcceptanceRadius = 100.0f, bool bCanStrafe = true);
+	
 protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "AI|Combat")
@@ -96,4 +109,7 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "AI|Weapon")
 	TWeakObjectPtr<AActor> WeaponTarget;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AShooterCoverPoint> CurrentCoverPoint;
 };

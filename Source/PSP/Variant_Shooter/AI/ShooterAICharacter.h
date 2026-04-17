@@ -65,6 +65,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	bool bOrderIsHold = false;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI|State")
+	bool bOrderIsTakeCover = false;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	EShooterTacticalOrder CurrentTacticalOrder = EShooterTacticalOrder::None;
 

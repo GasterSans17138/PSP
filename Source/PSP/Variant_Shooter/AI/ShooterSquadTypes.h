@@ -21,6 +21,7 @@ enum class EShooterTacticalOrder : uint8
 	Suppress UMETA(DisplayName = "Suppress"),
 	FlankLeft UMETA(DisplayName = "Flank Left"),
 	FlankRight UMETA(DisplayName = "Flank Right"),
+	TakeCover   UMETA(DisplayName="Take Cover"),
 	Regroup UMETA(DisplayName = "Regroup")
 };
 
@@ -37,6 +38,9 @@ struct FShooterSquadOrder
 
 	UPROPERTY(BlueprintReadOnly, Category = "Squad")
 	FVector MoveLocation = FVector::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Squad")
+	bool bReachedMoveLocation = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Squad")
 	FVector AttackLocation = FVector::ZeroVector;
