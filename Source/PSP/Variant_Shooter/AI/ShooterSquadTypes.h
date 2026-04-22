@@ -15,14 +15,15 @@ enum class EShooterSquadRole : uint8
 UENUM(BlueprintType)
 enum class EShooterTacticalOrder : uint8
 {
-	None UMETA(DisplayName = "None"),
-	Hold UMETA(DisplayName = "Hold"),
-	Push UMETA(DisplayName = "Push"),
-	Suppress UMETA(DisplayName = "Suppress"),
-	FlankLeft UMETA(DisplayName = "Flank Left"),
-	FlankRight UMETA(DisplayName = "Flank Right"),
-	TakeCover   UMETA(DisplayName="Take Cover"),
-	Regroup UMETA(DisplayName = "Regroup")
+	None        UMETA(DisplayName = "None"),
+	Hold        UMETA(DisplayName = "Hold"),
+	Push        UMETA(DisplayName = "Push"),
+	Suppress    UMETA(DisplayName = "Suppress"),
+	FlankLeft   UMETA(DisplayName = "Flank Left"),
+	FlankRight  UMETA(DisplayName = "Flank Right"),
+	TakeCover   UMETA(DisplayName = "Take Cover"),
+	Peek        UMETA(DisplayName = "Peek"),
+	Regroup     UMETA(DisplayName = "Regroup")
 };
 
 USTRUCT(BlueprintType)

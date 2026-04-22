@@ -47,8 +47,20 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 		return EStateTreeRunStatus::Failed;
 	}
 
+	// Resolve threat FIRST, so RefreshAIState/RefreshSquadOrder use the latest target/LOS.
+	AActor* ThreatActor = AIChar->GetCachedOrder().TargetActor;
+	if (!IsValid(ThreatActor))
+	{
+		ThreatActor = Controller->GetCombatTarget();
+	}
+
+	if (!IsValid(ThreatActor))
+	{
+		Controller->AcquirePlayerTarget();
+		ThreatActor = Controller->GetCombatTarget();
+	}
+
 	AIChar->RefreshAIState();
-	AIChar->RefreshSquadOrder();
 
 	if (AIChar->CurrentTacticalOrder != EShooterTacticalOrder::TakeCover)
 	{
@@ -56,7 +68,6 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 		return EStateTreeRunStatus::Succeeded;
 	}
 
-	AActor* ThreatActor = Controller->GetCombatTarget();
 	if (!IsValid(ThreatActor))
 	{
 		Controller->SetFireEnabled(false);
@@ -76,6 +87,7 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 	}
 
 	AShooterCoverPoint* CurrentCover = Controller->GetCurrentCoverPoint();
+
 	if (!IsValid(CurrentCover))
 	{
 		AShooterCoverPoint* BestCover = CoverSubsystem->FindBestCover(Controller->GetPawn(), ThreatActor, Data.SearchRadius);
@@ -88,6 +100,7 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 
 	if (!IsValid(CurrentCover))
 	{
+		Controller->SetFireEnabled(false);
 		return EStateTreeRunStatus::Running;
 	}
 
@@ -105,32 +118,22 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 				Data.LastMoveRequestTime = Time;
 			}
 		}
-	}
-	else
-	{
-		Controller->StopMovement();
+
+		Controller->SetFireEnabled(false);
+		return EStateTreeRunStatus::Running;
 	}
 
+	// Arrived at cover
+	Controller->StopMovement();
 	Controller->SetFireEnabled(false);
-	return EStateTreeRunStatus::Running;
+	return EStateTreeRunStatus::Succeeded;
 }
 
 void FShooterSTTask_TakeCover::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult&) const
 {
 	if (AShooterAIController* Controller = GetController(Context))
 	{
-		if (UWorld* World = Controller->GetWorld())
-		{
-			if (UShooterCoverSubsystem* CoverSubsystem = World->GetSubsystem<UShooterCoverSubsystem>())
-			{
-				if (AShooterCoverPoint* Cover = Controller->GetCurrentCoverPoint())
-				{
-					CoverSubsystem->ReleaseCover(Cover, Controller->GetPawn());
-				}
-			}
-		}
-
-		Controller->ClearCurrentCoverPoint();
+		// Keep the reserved/current cover so Peek can use it next.
 		Controller->SetFireEnabled(false);
 	}
 }

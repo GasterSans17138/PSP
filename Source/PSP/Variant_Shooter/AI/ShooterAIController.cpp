@@ -10,6 +10,8 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "ShooterCoverPoint.h"
+#include "NavigationSystem.h"
+#include "NavigationPath.h"
 
 AShooterAIController::AShooterAIController()
 {
@@ -83,6 +85,36 @@ bool AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanS
 	MoveTo(MoveRequest);
 	RefreshControlledAIState();
 	return true;
+}
+
+bool AShooterAIController::MoveToPeekLocation(float AcceptanceRadius, bool bCanStrafe)
+{
+	if (!CurrentCoverPoint.IsValid())
+	{
+		return false;
+	}
+
+	const FVector RawPeekLocation = CurrentCoverPoint->GetPeekLocation();
+
+	FNavLocation ProjectedLocation;
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavSys)
+	{
+		return false;
+	}
+
+	// Project the peek point onto the navmesh so AI does not try to reach an unreachable point.
+	const bool bProjected = NavSys->ProjectPointToNavigation(
+		RawPeekLocation,
+		ProjectedLocation,
+		FVector(150.0f, 150.0f, 200.0f));
+
+	if (!bProjected)
+	{
+		return false;
+	}
+
+	return MoveToTacticalLocation(ProjectedLocation.Location, AcceptanceRadius, bCanStrafe);
 }
 
 void AShooterAIController::SetFireEnabled(bool bEnabled)
@@ -259,8 +291,9 @@ bool AShooterAIController::MoveToTacticalLocation(const FVector& Location, float
 	MoveRequest.SetUsePathfinding(true);
 	MoveRequest.SetCanStrafe(bCanStrafe);
 
-	MoveTo(MoveRequest);
-	return true;
+	const EPathFollowingRequestResult::Type MoveResult = MoveTo(MoveRequest);
+
+	return MoveResult != EPathFollowingRequestResult::Failed;
 }
 
 void AShooterAIController::SetCurrentCoverPoint(AShooterCoverPoint* NewCoverPoint)

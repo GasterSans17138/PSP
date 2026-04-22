@@ -14,6 +14,12 @@ AShooterCoverPoint::AShooterCoverPoint()
 	CoverForwardArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("CoverForwardArrow"));
 	CoverForwardArrow->SetupAttachment(RootComponent);
 	CoverForwardArrow->ArrowSize = 1.25f;
+	CoverForwardArrow->SetRelativeLocation(FVector::ZeroVector);
+
+	PeekArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("PeekArrow"));
+	PeekArrow->SetupAttachment(RootComponent);
+	PeekArrow->ArrowSize = 1.0f;
+	PeekArrow->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
 }
 
 void AShooterCoverPoint::BeginPlay()
@@ -44,12 +50,17 @@ void AShooterCoverPoint::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 FVector AShooterCoverPoint::GetCoverLocation() const
 {
-	return GetActorLocation();
+	return GetActorLocation() - (GetCoverForward() * StandOffsetFromWall);
 }
 
 FVector AShooterCoverPoint::GetCoverForward() const
 {
 	return CoverForwardArrow ? CoverForwardArrow->GetForwardVector() : GetActorForwardVector();
+}
+
+FVector AShooterCoverPoint::GetPeekLocation() const
+{
+	return PeekArrow ? PeekArrow->GetComponentLocation() : GetCoverLocation();
 }
 
 bool AShooterCoverPoint::Reserve(AActor* Occupant)

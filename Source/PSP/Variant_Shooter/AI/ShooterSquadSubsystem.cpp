@@ -231,13 +231,14 @@ EShooterTacticalOrder UShooterSquadSubsystem::ComputeDynamicTacticalOrder(
 	}
 
 	case EShooterSquadRole::Suppressor:
+	{
+		if (!MyState.bReachedTacticalMoveLocation)
 		{
-			if (!MyState.bHasLineOfSight)
-			{
-				return EShooterTacticalOrder::TakeCover;
-			}
-			return EShooterTacticalOrder::Suppress;
+			return EShooterTacticalOrder::TakeCover;
 		}
+
+		return EShooterTacticalOrder::Peek;
+	}
 
 	case EShooterSquadRole::Assaulter:
 	default:

@@ -52,6 +52,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	bool MoveToCombatTarget(float AcceptanceRadius = 550.0f, bool bCanStrafe = true);
 
+	UFUNCTION(BlueprintCallable, Category = "AI|Cover")
+	bool MoveToPeekLocation(float AcceptanceRadius = 75.0f, bool bCanStrafe = true);
+
 	/** Starts or stops firing on the controlled shooter character. */
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	void SetFireEnabled(bool bEnabled);

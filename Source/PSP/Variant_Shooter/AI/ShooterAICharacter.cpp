@@ -40,6 +40,7 @@ void AShooterAICharacter::RefreshSquadOrder()
 		(CurrentTacticalOrder == EShooterTacticalOrder::FlankRight);
 	bOrderIsHold = (CurrentTacticalOrder == EShooterTacticalOrder::Hold);
 	bOrderIsTakeCover = (CurrentTacticalOrder == EShooterTacticalOrder::TakeCover);
+	bOrderIsPeek = (CurrentTacticalOrder == EShooterTacticalOrder::Peek);
 }
 
 void AShooterAICharacter::RefreshAIState()
