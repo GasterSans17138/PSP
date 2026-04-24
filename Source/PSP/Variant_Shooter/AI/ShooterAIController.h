@@ -9,6 +9,15 @@ class UShooterSquadComponent;
 class AShooterCharacter;
 class AShooterCoverPoint;
 
+UENUM(BlueprintType)
+enum class EShooterCoverCombatPhase : uint8
+{
+	None,
+	TakingCover,
+	Peek,
+	ReturnToCover
+};
+
 /**
  * AI controller preconfigured with a StateTree AI component.
  * Use this controller as the brain for AShooterAICharacter pawns.
@@ -104,7 +113,29 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="AI|Cover")
 	bool MoveToCoverPoint(float AcceptanceRadius = 100.0f, bool bCanStrafe = true);
-	
+
+	UFUNCTION(BlueprintCallable, Category = "AI|Cover")
+	void SetWantsReturnToCover(bool bValue);
+
+	UFUNCTION(BlueprintPure, Category = "AI|Cover")
+	bool WantsReturnToCover() const;
+
+	UFUNCTION(BlueprintCallable, Category = "AI|Cover")
+	bool GetProjectedPeekLocation(FVector& OutLocation) const;
+
+	UFUNCTION(BlueprintCallable, Category = "AI|Cover")
+	void SetCoverCombatPhase(EShooterCoverCombatPhase NewPhase);
+
+	UFUNCTION(BlueprintPure, Category = "AI|Cover")
+	EShooterCoverCombatPhase GetCoverCombatPhase() const;
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "AI|Cover")
+	void SetHasCompletedTakeCover(bool bValue);
+
+	UFUNCTION(BlueprintPure, Category = "AI|Cover")
+	bool HasCompletedTakeCover() const;
+
 protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "AI|Combat")
@@ -115,4 +146,13 @@ protected:
 
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AShooterCoverPoint> CurrentCoverPoint;
+
+	UPROPERTY(Transient)
+	bool bWantsReturnToCover = false;
+
+	UPROPERTY(Transient)
+	bool bHasCompletedTakeCover = false;
+
+	UPROPERTY(Transient)
+	EShooterCoverCombatPhase CoverCombatPhase = EShooterCoverCombatPhase::None;
 };

@@ -94,27 +94,7 @@ bool AShooterAIController::MoveToPeekLocation(float AcceptanceRadius, bool bCanS
 		return false;
 	}
 
-	const FVector RawPeekLocation = CurrentCoverPoint->GetPeekLocation();
-
-	FNavLocation ProjectedLocation;
-	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-	if (!NavSys)
-	{
-		return false;
-	}
-
-	// Project the peek point onto the navmesh so AI does not try to reach an unreachable point.
-	const bool bProjected = NavSys->ProjectPointToNavigation(
-		RawPeekLocation,
-		ProjectedLocation,
-		FVector(150.0f, 150.0f, 200.0f));
-
-	if (!bProjected)
-	{
-		return false;
-	}
-
-	return MoveToTacticalLocation(ProjectedLocation.Location, AcceptanceRadius, bCanStrafe);
+	return MoveToTacticalLocation(CurrentCoverPoint->GetPeekLocation(), AcceptanceRadius, bCanStrafe);
 }
 
 void AShooterAIController::SetFireEnabled(bool bEnabled)
@@ -314,4 +294,64 @@ bool AShooterAIController::MoveToCoverPoint(float AcceptanceRadius, bool bCanStr
 	}
 
 	return MoveToTacticalLocation(CurrentCoverPoint->GetCoverLocation(), AcceptanceRadius, bCanStrafe);
+}
+
+void AShooterAIController::SetWantsReturnToCover(bool bValue)
+{
+	bWantsReturnToCover = bValue;
+}
+
+bool AShooterAIController::WantsReturnToCover() const
+{
+	return bWantsReturnToCover;
+}
+
+bool AShooterAIController::GetProjectedPeekLocation(FVector& OutLocation) const
+{
+	if (!CurrentCoverPoint.IsValid())
+	{
+		return false;
+	}
+
+	const FVector RawPeekLocation = CurrentCoverPoint->GetPeekLocation();
+
+	const UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavSys)
+	{
+		return false;
+	}
+
+	FNavLocation ProjectedLocation;
+	const bool bProjected = NavSys->ProjectPointToNavigation(
+		RawPeekLocation,
+		ProjectedLocation,
+		FVector(150.0f, 150.0f, 200.0f));
+
+	if (!bProjected)
+	{
+		return false;
+	}
+
+	OutLocation = ProjectedLocation.Location;
+	return true;
+}
+
+void AShooterAIController::SetHasCompletedTakeCover(bool bValue)
+{
+	bHasCompletedTakeCover = bValue;
+}
+
+bool AShooterAIController::HasCompletedTakeCover() const
+{
+	return bHasCompletedTakeCover;
+}
+
+void AShooterAIController::SetCoverCombatPhase(EShooterCoverCombatPhase NewPhase)
+{
+	CoverCombatPhase = NewPhase;
+}
+
+EShooterCoverCombatPhase AShooterAIController::GetCoverCombatPhase() const
+{
+	return CoverCombatPhase;
 }

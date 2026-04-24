@@ -15,17 +15,26 @@ struct FShooterSTTask_TakeCoverInstanceData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category="Cover", meta=(ClampMin=0, Units="cm"))
+	UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = 0, Units = "cm"))
 	float SearchRadius = 2500.0f;
 
-	UPROPERTY(EditAnywhere, Category="Cover", meta=(ClampMin=0, Units="cm"))
-	float MoveAcceptanceRadius = 100.0f;
+	UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = 0, Units = "cm"))
+	float MoveAcceptanceRadius = 75.0f;
 
-	UPROPERTY(EditAnywhere, Category="Cover", meta=(ClampMin=0, Units="s"))
-	float RepathInterval = 0.75f;
+	UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = 0, Units = "cm"))
+	float CoverValidationDistance = 180.0f;
 
-	UPROPERTY(VisibleAnywhere, Category="Runtime")
+	UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = 0, Units = "s"))
+	float RepathInterval = 0.35f;
+
+	UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = 0, Units = "s"))
+	float CoverHoldDuration = 2.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
 	float LastMoveRequestTime = -1000.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	float CoverReachedTime = -1.0f;
 };
 
 USTRUCT(meta=(DisplayName="Shooter: Take Cover"))

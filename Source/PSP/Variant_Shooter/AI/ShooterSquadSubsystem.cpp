@@ -1,6 +1,8 @@
 #include "ShooterSquadSubsystem.h"
 #include "ShooterSquadComponent.h"
 #include "GameFramework/Actor.h"
+#include "ShooterAICharacter.h"
+#include "ShooterAIController.h"
 
 void UShooterSquadSubsystem::RegisterMember(FName SquadId, UShooterSquadComponent* Member)
 {
@@ -232,12 +234,26 @@ EShooterTacticalOrder UShooterSquadSubsystem::ComputeDynamicTacticalOrder(
 
 	case EShooterSquadRole::Suppressor:
 	{
-		if (!MyState.bReachedTacticalMoveLocation)
+		const AActor* RequesterActor = Requester->GetOwner();
+		const AShooterAICharacter* AIChar = RequesterActor ? Cast<AShooterAICharacter>(RequesterActor) : nullptr;
+		const AShooterAIController* AIController = AIChar ? Cast<AShooterAIController>(AIChar->GetController()) : nullptr;
+
+		if (!AIController)
 		{
 			return EShooterTacticalOrder::TakeCover;
 		}
 
-		return EShooterTacticalOrder::Peek;
+		switch (AIController->GetCoverCombatPhase())
+		{
+		case EShooterCoverCombatPhase::Peek:
+			return EShooterTacticalOrder::Peek;
+
+		case EShooterCoverCombatPhase::None:
+		case EShooterCoverCombatPhase::TakingCover:
+		case EShooterCoverCombatPhase::ReturnToCover:
+		default:
+			return EShooterTacticalOrder::TakeCover;
+		}
 	}
 
 	case EShooterSquadRole::Assaulter:

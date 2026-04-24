@@ -3,6 +3,7 @@
 #include "ShooterAICharacter.h"
 #include "ShooterCoverPoint.h"
 #include "StateTreeExecutionContext.h"
+#include "ShooterCoverSubsystem.h"
 
 AShooterAIController* FShooterSTTask_PeekFromCover::GetController(FStateTreeExecutionContext& Context) const
 {
@@ -23,27 +24,17 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::EnterState(FStateTreeExecution
 	FInstanceDataType& Data = Context.GetInstanceData(*this);
 
 	AShooterAIController* Controller = GetController(Context);
-	AShooterAICharacter* AIChar = GetAICharacter(Context);
-
-	UE_LOG(LogTemp, Warning, TEXT("[Peek][Enter] Pawn=%s Controller=%s AIChar=%s Cover=%s"),
-		*GetNameSafe(Controller ? Controller->GetPawn() : nullptr),
-		*GetNameSafe(Controller),
-		*GetNameSafe(AIChar),
-		*GetNameSafe(Controller ? Controller->GetCurrentCoverPoint() : nullptr));
-
 	if (!IsValid(Controller) || !IsValid(Controller->GetCurrentCoverPoint()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Peek][Enter] FAILED - invalid controller or no current cover"));
 		return EStateTreeRunStatus::Failed;
 	}
 
 	Data.StateEnterTime = Controller->GetWorld()->GetTimeSeconds();
 	Data.LastMoveRequestTime = -1000.0f;
+	Data.PeekStartTime = -1.0f;
+	Data.bHasSeenTargetDuringPeek = false;
+
 	Controller->SetFireEnabled(false);
-
-	UE_LOG(LogTemp, Warning, TEXT("[Peek][Enter] OK - StateEnterTime=%.3f"),
-		Data.StateEnterTime);
-
 	return EStateTreeRunStatus::Running;
 }
 
@@ -55,22 +46,13 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 	AShooterAICharacter* AIChar = GetAICharacter(Context);
 	if (!IsValid(Controller) || !IsValid(AIChar))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] FAILED - invalid controller or AIChar"));
 		return EStateTreeRunStatus::Failed;
 	}
 
 	AIChar->RefreshAIState();
 
-	UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] Pawn=%s Order=%d bOrderIsPeek=%d bOrderIsTakeCover=%d CurrentCover=%s"),
-		*GetNameSafe(Controller->GetPawn()),
-		(int32)AIChar->CurrentTacticalOrder,
-		AIChar->bOrderIsPeek ? 1 : 0,
-		AIChar->bOrderIsTakeCover ? 1 : 0,
-		*GetNameSafe(Controller->GetCurrentCoverPoint()));
-
 	if (!AIChar->bOrderIsPeek)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] EXIT -> Succeeded because bOrderIsPeek is false"));
 		Controller->SetFireEnabled(false);
 		return EStateTreeRunStatus::Succeeded;
 	}
@@ -78,7 +60,18 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 	AShooterCoverPoint* CoverPoint = Controller->GetCurrentCoverPoint();
 	if (!IsValid(CoverPoint))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] FAILED - no current cover point"));
+		return EStateTreeRunStatus::Failed;
+	}
+
+	UWorld* World = Controller->GetWorld();
+	if (!World)
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	UShooterCoverSubsystem* CoverSubsystem = World->GetSubsystem<UShooterCoverSubsystem>();
+	if (!CoverSubsystem)
+	{
 		return EStateTreeRunStatus::Failed;
 	}
 
@@ -88,12 +81,8 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 		ThreatActor = Controller->GetCombatTarget();
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] ThreatActor=%s"),
-		*GetNameSafe(ThreatActor));
-
 	if (!IsValid(ThreatActor))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] RUNNING - no threat actor"));
 		Controller->SetFireEnabled(false);
 		return EStateTreeRunStatus::Running;
 	}
@@ -102,26 +91,17 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 	const FVector SelfLocation = Controller->GetPawn()->GetActorLocation();
 	const FVector PeekLocation = CoverPoint->GetPeekLocation();
 	const float DistToPeek = FVector::Dist(SelfLocation, PeekLocation);
-	const float Elapsed = Time - Data.StateEnterTime;
 
-	UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] Time=%.3f Enter=%.3f Elapsed=%.3f DistToPeek=%.2f PeekLocation=%s"),
-		Time,
-		Data.StateEnterTime,
-		Elapsed,
-		DistToPeek,
-		*PeekLocation.ToString());
+	const bool bCloseEnoughToPeek = DistToPeek <= Data.FireStartDistance;
 
-	if (DistToPeek > Data.MoveAcceptanceRadius)
+	if (!bCloseEnoughToPeek)
 	{
+		Data.PeekStartTime = -1.0f;
+		Data.bHasSeenTargetDuringPeek = false;
+
 		if ((Time - Data.LastMoveRequestTime) >= Data.RepathInterval)
 		{
-			const bool bMoveStarted = Controller->MoveToPeekLocation(Data.MoveAcceptanceRadius, true);
-
-			UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] MoveToPeekLocation=%d LastMoveRequestTime(before)=%.3f"),
-				bMoveStarted ? 1 : 0,
-				Data.LastMoveRequestTime);
-
-			if (bMoveStarted)
+			if (Controller->MoveToPeekLocation(Data.MoveAcceptanceRadius, true))
 			{
 				Data.LastMoveRequestTime = Time;
 			}
@@ -134,20 +114,29 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 	Controller->StopMovement();
 	Controller->SetFocus(ThreatActor);
 
+	if (Data.PeekStartTime < 0.0f)
+	{
+		Data.PeekStartTime = Time;
+	}
+
 	const bool bHasLOS = Controller->HasLineOfSightToActor(ThreatActor);
+
+	if (bHasLOS && !Data.bHasSeenTargetDuringPeek)
+	{
+		Data.bHasSeenTargetDuringPeek = true;
+		Data.PeekStartTime = Time;
+	}
+
 	Controller->SetFireEnabled(bHasLOS);
 
-	UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] Reached peek spot - bHasLOS=%d Fire=%d"),
-		bHasLOS ? 1 : 0,
-		bHasLOS ? 1 : 0);
-
-	if (Elapsed >= Data.PeekDuration)
+	const float PeekElapsed = Time - Data.PeekStartTime;
+	if (PeekElapsed >= Data.PeekDuration)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Peek][Tick] EXIT -> Succeeded because PeekDuration reached (Elapsed=%.3f / Duration=%.3f)"),
-			Elapsed,
-			Data.PeekDuration);
-
 		Controller->SetFireEnabled(false);
+		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ReturnToCover);
+
+		AIChar->RefreshAIState();
+
 		return EStateTreeRunStatus::Succeeded;
 	}
 

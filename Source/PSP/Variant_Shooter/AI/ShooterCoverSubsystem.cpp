@@ -88,6 +88,11 @@ void UShooterCoverSubsystem::ReleaseCover(AShooterCoverPoint* CoverPoint, AActor
 	}
 }
 
+bool UShooterCoverSubsystem::IsCoverStillValidAgainstThreat(const AShooterCoverPoint* CoverPoint, const AActor* ThreatActor) const
+{
+	return IsCoverProtectedFromThreat(CoverPoint, ThreatActor);
+}
+
 void UShooterCoverSubsystem::CleanupInvalidCoverPoints()
 {
 	CoverPoints.RemoveAll([](const TObjectPtr<AShooterCoverPoint>& Point)

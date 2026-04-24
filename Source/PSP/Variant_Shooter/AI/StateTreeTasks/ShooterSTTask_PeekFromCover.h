@@ -21,7 +21,16 @@ struct FShooterSTTask_PeekFromCoverInstanceData
 	float RepathInterval = 0.35f;
 
 	UPROPERTY(EditAnywhere, Category = "Peek", meta = (ClampMin = 0, Units = "s"))
-	float PeekDuration = 1.2f;
+	float PeekDuration = 2.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek", meta = (ClampMin = 0, Units = "cm"))
+	float FireStartDistance = 180.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	float PeekStartTime = -1.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	bool bHasSeenTargetDuringPeek = false;
 
 	UPROPERTY(VisibleAnywhere, Category = "Runtime")
 	float StateEnterTime = 0.0f;

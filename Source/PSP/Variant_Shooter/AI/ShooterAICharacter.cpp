@@ -3,6 +3,7 @@
 #include "ShooterAIController.h"
 #include "ShooterWeapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "ShooterCoverPoint.h"
 
 AShooterAICharacter::AShooterAICharacter()
 {
@@ -75,15 +76,22 @@ void AShooterAICharacter::RefreshAIState()
 			}
 		}
 
-		if (!CurrentSquadMoveLocation.IsNearlyZero())
+		RuntimeState.bReachedTacticalMoveLocation = false;
+
+		if (const AShooterAIController* AIController = Cast<AShooterAIController>(GetController()))
 		{
-			const float DistToMove = FVector::Dist(GetActorLocation(), CurrentSquadMoveLocation);
-			const float ReachedTolerance = 450.0f;
-			RuntimeState.bReachedTacticalMoveLocation = DistToMove <= ReachedTolerance;
-		}
-		else
-		{
-			RuntimeState.bReachedTacticalMoveLocation = false;
+			if (const AShooterCoverPoint* CurrentCover = AIController->GetCurrentCoverPoint())
+			{
+				const float DistToCover = FVector::Dist(GetActorLocation(), CurrentCover->GetCoverLocation());
+				const float CoverReachedTolerance = 450.0f;
+				RuntimeState.bReachedTacticalMoveLocation = DistToCover <= CoverReachedTolerance;
+			}
+			else if (!CurrentSquadMoveLocation.IsNearlyZero())
+			{
+				const float DistToMove = FVector::Dist(GetActorLocation(), CurrentSquadMoveLocation);
+				const float ReachedTolerance = 450.0f;
+				RuntimeState.bReachedTacticalMoveLocation = DistToMove <= ReachedTolerance;
+			}
 		}
 
 		SquadComponent->SetRuntimeState(RuntimeState);

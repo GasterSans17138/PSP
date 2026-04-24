@@ -20,7 +20,9 @@ AShooterAICharacter* FShooterSTTask_TakeCover::GetAICharacter(FStateTreeExecutio
 	return nullptr;
 }
 
-EStateTreeRunStatus FShooterSTTask_TakeCover::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult&) const
+EStateTreeRunStatus FShooterSTTask_TakeCover::EnterState(
+	FStateTreeExecutionContext& Context,
+	const FStateTreeTransitionResult&) const
 {
 	FInstanceDataType& Data = Context.GetInstanceData(*this);
 
@@ -31,6 +33,13 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::EnterState(FStateTreeExecutionCont
 	}
 
 	Data.LastMoveRequestTime = -1000.0f;
+	Data.CoverReachedTime = -1.0f;
+
+	if (Controller->GetCoverCombatPhase() == EShooterCoverCombatPhase::None)
+	{
+		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::TakingCover);
+	}
+
 	Controller->SetFireEnabled(false);
 
 	return EStateTreeRunStatus::Running;
@@ -88,6 +97,24 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 
 	AShooterCoverPoint* CurrentCover = Controller->GetCurrentCoverPoint();
 
+	if (IsValid(CurrentCover))
+	{
+		const bool bCurrentCoverStillValid =
+			CoverSubsystem->IsCoverStillValidAgainstThreat(CurrentCover, ThreatActor);
+
+		if (!bCurrentCoverStillValid)
+		{
+			CoverSubsystem->ReleaseCover(CurrentCover, Controller->GetPawn());
+			Controller->ClearCurrentCoverPoint();
+			CurrentCover = nullptr;
+
+			Data.CoverReachedTime = -1.0f;
+
+			// Stay in cover-search phase and find a better cover.
+			Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::TakingCover);
+		}
+	}
+
 	if (!IsValid(CurrentCover))
 	{
 		AShooterCoverPoint* BestCover = CoverSubsystem->FindBestCover(Controller->GetPawn(), ThreatActor, Data.SearchRadius);
@@ -109,8 +136,12 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 	const FVector CoverLocation = CurrentCover->GetCoverLocation();
 	const float DistToCover = FVector::Dist(SelfLocation, CoverLocation);
 
-	if (DistToCover > Data.MoveAcceptanceRadius)
+	const bool bCloseEnoughToCover = DistToCover <= Data.CoverValidationDistance;
+
+	if (!bCloseEnoughToCover)
 	{
+		Data.CoverReachedTime = -1.0f;
+
 		if ((Time - Data.LastMoveRequestTime) >= Data.RepathInterval)
 		{
 			if (Controller->MoveToCoverPoint(Data.MoveAcceptanceRadius, true))
@@ -123,9 +154,26 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 		return EStateTreeRunStatus::Running;
 	}
 
-	// Arrived at cover
 	Controller->StopMovement();
 	Controller->SetFireEnabled(false);
+
+	if (Data.CoverReachedTime < 0.0f)
+	{
+		Data.CoverReachedTime = Time;
+	}
+
+	const float TimeInCover = Time - Data.CoverReachedTime;
+
+	if (TimeInCover < Data.CoverHoldDuration)
+	{
+		return EStateTreeRunStatus::Running;
+	}
+
+	// Cover wait finished: next state must be Peek.
+	Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::Peek);
+
+	AIChar->RefreshAIState();
+
 	return EStateTreeRunStatus::Succeeded;
 }
 

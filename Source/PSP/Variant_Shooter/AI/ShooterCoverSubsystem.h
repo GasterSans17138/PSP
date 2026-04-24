@@ -24,6 +24,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Cover")
 	void ReleaseCover(AShooterCoverPoint* CoverPoint, AActor* Occupant);
 
+	UFUNCTION(BlueprintCallable, Category = "Cover")
+	bool IsCoverStillValidAgainstThreat(const AShooterCoverPoint* CoverPoint, const AActor* ThreatActor) const;
+
 private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<AShooterCoverPoint>> CoverPoints;
