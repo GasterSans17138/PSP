@@ -1,11 +1,22 @@
 #include "ShooterSTTask_GetWeapon.h"
 #include "ShooterAIController.h"
+#include "ShooterAICharacter.h"
 #include "StateTreeExecutionContext.h"
 #include "GameFramework/Actor.h"
+#include "ShooterSquadComponent.h"
 
 AShooterAIController* FShooterSTTask_GetWeapon::GetController(FStateTreeExecutionContext& Context) const
 {
 	return Cast<AShooterAIController>(Context.GetOwner());
+}
+
+AShooterAICharacter* FShooterSTTask_GetWeapon::GetAICharacter(FStateTreeExecutionContext& Context) const
+{
+	if (AShooterAIController* Controller = GetController(Context))
+	{
+		return Cast<AShooterAICharacter>(Controller->GetPawn());
+	}
+	return nullptr;
 }
 
 EStateTreeRunStatus FShooterSTTask_GetWeapon::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
@@ -81,12 +92,32 @@ EStateTreeRunStatus FShooterSTTask_GetWeapon::Tick(FStateTreeExecutionContext& C
 	return EStateTreeRunStatus::Running;
 }
 
-void FShooterSTTask_GetWeapon::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+void FShooterSTTask_GetWeapon::ExitState(
+	FStateTreeExecutionContext& Context,
+	const FStateTreeTransitionResult&) const
 {
-	if (AShooterAIController* Controller = GetController(Context))
+	AShooterAIController* Controller = GetController(Context);
+	AShooterAICharacter* AIChar = GetAICharacter(Context);
+
+	if (!IsValid(Controller) || !IsValid(AIChar))
 	{
-		Controller->SetFireEnabled(false);
-		Controller->ClearWeaponTarget();
-		Controller->RefreshControlledAIState();
+		return;
 	}
+
+	Controller->StopMovement();
+	Controller->ClearWeaponTarget();
+
+	if (!IsValid(Controller->GetCombatTarget()))
+	{
+		Controller->AcquirePlayerTarget();
+	}
+
+	AIChar->RefreshAIState();
+
+	if (UShooterSquadComponent* SquadComp = Controller->GetControlledSquadComponent())
+	{
+		SquadComp->BroadcastTarget(Controller->GetCombatTarget());
+	}
+
+	AIChar->RefreshAIState();
 }

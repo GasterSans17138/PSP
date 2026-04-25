@@ -5,6 +5,7 @@
 #include "ShooterSTTask_GetWeapon.generated.h"
 
 class AShooterAIController;
+class AShooterAICharacter;
 struct FStateTreeExecutionContext;
 struct FStateTreeTransitionResult;
 
@@ -46,4 +47,5 @@ struct PSP_API FShooterSTTask_GetWeapon : public FStateTreeTaskCommonBase
 private:
 
 	AShooterAIController* GetController(FStateTreeExecutionContext& Context) const;
+	AShooterAICharacter* GetAICharacter(FStateTreeExecutionContext& Context) const;
 };

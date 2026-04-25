@@ -3,15 +3,12 @@
 #include "ShooterCharacter.h"
 #include "ShooterPickup.h"
 #include "ShooterSquadComponent.h"
+#include "ShooterCoverPoint.h"
 #include "BrainComponent.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Navigation/PathFollowingComponent.h"
-#include "DrawDebugHelpers.h"
 #include "Engine/World.h"
-#include "ShooterCoverPoint.h"
-#include "NavigationSystem.h"
-#include "NavigationPath.h"
 
 AShooterAIController::AShooterAIController()
 {
@@ -40,6 +37,8 @@ void AShooterAIController::OnUnPossess()
 
 	CombatTarget = nullptr;
 	WeaponTarget = nullptr;
+	CurrentCoverPoint.Reset();
+	CoverCombatPhase = EShooterCoverCombatPhase::None;
 
 	Super::OnUnPossess();
 }
@@ -82,19 +81,10 @@ bool AShooterAIController::MoveToCombatTarget(float AcceptanceRadius, bool bCanS
 	MoveRequest.SetUsePathfinding(true);
 	MoveRequest.SetCanStrafe(bCanStrafe);
 
-	MoveTo(MoveRequest);
+	const EPathFollowingRequestResult::Type MoveResult = MoveTo(MoveRequest);
+
 	RefreshControlledAIState();
-	return true;
-}
-
-bool AShooterAIController::MoveToPeekLocation(float AcceptanceRadius, bool bCanStrafe)
-{
-	if (!CurrentCoverPoint.IsValid())
-	{
-		return false;
-	}
-
-	return MoveToTacticalLocation(CurrentCoverPoint->GetPeekLocation(), AcceptanceRadius, bCanStrafe);
+	return MoveResult != EPathFollowingRequestResult::Failed;
 }
 
 void AShooterAIController::SetFireEnabled(bool bEnabled)
@@ -144,7 +134,6 @@ AActor* AShooterAIController::FindBestWeaponPickup(float SearchRadius)
 		return nullptr;
 	}
 
-	// If already armed, no need to look for a pickup.
 	if (const AShooterAICharacter* ShooterAI = Cast<AShooterAICharacter>(SelfPawn))
 	{
 		if (ShooterAI->GetCurrentWeaponActor() != nullptr)
@@ -159,18 +148,13 @@ AActor* AShooterAIController::FindBestWeaponPickup(float SearchRadius)
 
 	AActor* BestPickup = nullptr;
 	float BestDistSq = FLT_MAX;
+
 	const FVector SelfLocation = SelfPawn->GetActorLocation();
 	const float MaxDistSq = FMath::Square(SearchRadius);
 
 	for (AActor* Candidate : FoundPickups)
 	{
-		if (!IsValid(Candidate))
-		{
-			continue;
-		}
-
-		// Hidden pickup = already taken / unavailable.
-		if (Candidate->IsHidden())
+		if (!IsValid(Candidate) || Candidate->IsHidden())
 		{
 			continue;
 		}
@@ -208,9 +192,10 @@ bool AShooterAIController::MoveToWeaponTarget(float AcceptanceRadius)
 	MoveRequest.SetUsePathfinding(true);
 	MoveRequest.SetCanStrafe(false);
 
-	MoveTo(MoveRequest);
+	const EPathFollowingRequestResult::Type MoveResult = MoveTo(MoveRequest);
+
 	RefreshControlledAIState();
-	return true;
+	return MoveResult != EPathFollowingRequestResult::Failed;
 }
 
 void AShooterAIController::ClearWeaponTarget()
@@ -296,54 +281,14 @@ bool AShooterAIController::MoveToCoverPoint(float AcceptanceRadius, bool bCanStr
 	return MoveToTacticalLocation(CurrentCoverPoint->GetCoverLocation(), AcceptanceRadius, bCanStrafe);
 }
 
-void AShooterAIController::SetWantsReturnToCover(bool bValue)
-{
-	bWantsReturnToCover = bValue;
-}
-
-bool AShooterAIController::WantsReturnToCover() const
-{
-	return bWantsReturnToCover;
-}
-
-bool AShooterAIController::GetProjectedPeekLocation(FVector& OutLocation) const
+bool AShooterAIController::MoveToPeekLocation(float AcceptanceRadius, bool bCanStrafe)
 {
 	if (!CurrentCoverPoint.IsValid())
 	{
 		return false;
 	}
 
-	const FVector RawPeekLocation = CurrentCoverPoint->GetPeekLocation();
-
-	const UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-	if (!NavSys)
-	{
-		return false;
-	}
-
-	FNavLocation ProjectedLocation;
-	const bool bProjected = NavSys->ProjectPointToNavigation(
-		RawPeekLocation,
-		ProjectedLocation,
-		FVector(150.0f, 150.0f, 200.0f));
-
-	if (!bProjected)
-	{
-		return false;
-	}
-
-	OutLocation = ProjectedLocation.Location;
-	return true;
-}
-
-void AShooterAIController::SetHasCompletedTakeCover(bool bValue)
-{
-	bHasCompletedTakeCover = bValue;
-}
-
-bool AShooterAIController::HasCompletedTakeCover() const
-{
-	return bHasCompletedTakeCover;
+	return MoveToTacticalLocation(CurrentCoverPoint->GetPeekLocation(), AcceptanceRadius, bCanStrafe);
 }
 
 void AShooterAIController::SetCoverCombatPhase(EShooterCoverCombatPhase NewPhase)

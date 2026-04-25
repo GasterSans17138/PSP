@@ -4,6 +4,7 @@
 #include "ShooterCoverPoint.h"
 #include "ShooterCoverSubsystem.h"
 #include "StateTreeExecutionContext.h"
+#include "ShooterSquadComponent.h"
 #include "Engine/World.h"
 
 AShooterAIController* FShooterSTTask_TakeCover::GetController(FStateTreeExecutionContext& Context) const
@@ -27,13 +28,30 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::EnterState(
 	FInstanceDataType& Data = Context.GetInstanceData(*this);
 
 	AShooterAIController* Controller = GetController(Context);
-	if (!IsValid(Controller))
+	AShooterAICharacter* AIChar = GetAICharacter(Context);
+
+	if (!IsValid(Controller) || !IsValid(AIChar))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 
+	if (!IsValid(Controller->GetCombatTarget()))
+	{
+		Controller->AcquirePlayerTarget();
+	}
+
+	AIChar->RefreshAIState();
+
+	if (UShooterSquadComponent* SquadComp = Controller->GetControlledSquadComponent())
+	{
+		SquadComp->BroadcastTarget(Controller->GetCombatTarget());
+		AIChar->RefreshSquadOrder();
+	}
+
 	Data.LastMoveRequestTime = -1000.0f;
 	Data.CoverReachedTime = -1.0f;
+	Data.LastCoverEvaluationTargetLocation = FVector::ZeroVector;
+	Data.bHasCoverEvaluationTargetLocation = false;
 
 	if (Controller->GetCoverCombatPhase() == EShooterCoverCombatPhase::None)
 	{
@@ -97,6 +115,24 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 
 	AShooterCoverPoint* CurrentCover = Controller->GetCurrentCoverPoint();
 
+	const FVector TargetLocation = ThreatActor->GetActorLocation();
+
+	bool bShouldReevaluateCover = false;
+
+	if (!Data.bHasCoverEvaluationTargetLocation)
+	{
+		Data.LastCoverEvaluationTargetLocation = TargetLocation;
+		Data.bHasCoverEvaluationTargetLocation = true;
+	}
+	else
+	{
+		const float TargetMovedDist = FVector::Dist(TargetLocation, Data.LastCoverEvaluationTargetLocation);
+		if (TargetMovedDist >= Data.ReevaluateCoverIfTargetMovedDistance)
+		{
+			bShouldReevaluateCover = true;
+		}
+	}
+
 	if (IsValid(CurrentCover))
 	{
 		const bool bCurrentCoverStillValid =
@@ -104,20 +140,41 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 
 		if (!bCurrentCoverStillValid)
 		{
+			bShouldReevaluateCover = true;
+		}
+	}
+
+	if (bShouldReevaluateCover)
+	{
+		if (IsValid(CurrentCover))
+		{
 			CoverSubsystem->ReleaseCover(CurrentCover, Controller->GetPawn());
 			Controller->ClearCurrentCoverPoint();
 			CurrentCover = nullptr;
-
-			Data.CoverReachedTime = -1.0f;
-
-			// Stay in cover-search phase and find a better cover.
-			Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::TakingCover);
 		}
+
+		Data.CoverReachedTime = -1.0f;
+		Data.LastCoverEvaluationTargetLocation = TargetLocation;
+		Data.bHasCoverEvaluationTargetLocation = true;
+
+		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::TakingCover);
 	}
 
 	if (!IsValid(CurrentCover))
 	{
-		AShooterCoverPoint* BestCover = CoverSubsystem->FindBestCover(Controller->GetPawn(), ThreatActor, Data.SearchRadius);
+		const FShooterSquadOrder& CachedOrder = AIChar->GetCachedOrder();
+
+		const FVector PreferredCoverLocation = !CachedOrder.MoveLocation.IsNearlyZero()
+			? CachedOrder.MoveLocation
+			: Controller->GetPawn()->GetActorLocation();
+
+		AShooterCoverPoint* BestCover = CoverSubsystem->FindBestCoverNearLocation(
+			Controller->GetPawn(),
+			ThreatActor,
+			PreferredCoverLocation,
+			CachedOrder.BaseTacticalOrder,
+			Data.SearchRadius);
+
 		if (IsValid(BestCover) && CoverSubsystem->ReserveCover(BestCover, Controller->GetPawn()))
 		{
 			Controller->SetCurrentCoverPoint(BestCover);

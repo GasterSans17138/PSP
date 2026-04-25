@@ -22,13 +22,10 @@ public:
 	FVector GetCoverLocation() const;
 
 	UFUNCTION(BlueprintPure, Category = "Cover")
-	FVector GetCoverForward() const;
-
-	UFUNCTION(BlueprintPure, Category = "Cover")
 	FVector GetPeekLocation() const;
 
 	UFUNCTION(BlueprintPure, Category = "Cover")
-	FVector GetStandLocation() const { return GetCoverLocation(); }
+	FVector GetCoverForward() const;
 
 	UFUNCTION(BlueprintPure, Category = "Cover")
 	bool IsOccupied() const { return CurrentOccupant.IsValid(); }
@@ -45,9 +42,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Cover")
 	bool CanBeUsedBy(AActor* Requester) const;
 
-	UFUNCTION(BlueprintPure, Category = "Cover")
-	float GetReservationRadius() const { return ReservationRadius; }
-
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USceneComponent> Root;
@@ -57,9 +51,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UArrowComponent> PeekArrow;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = 25, Units = "cm"))
-	float ReservationRadius = 75.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = 0, Units = "cm"))
 	float StandOffsetFromWall = 75.0f;

@@ -63,18 +63,6 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 		return EStateTreeRunStatus::Failed;
 	}
 
-	UWorld* World = Controller->GetWorld();
-	if (!World)
-	{
-		return EStateTreeRunStatus::Failed;
-	}
-
-	UShooterCoverSubsystem* CoverSubsystem = World->GetSubsystem<UShooterCoverSubsystem>();
-	if (!CoverSubsystem)
-	{
-		return EStateTreeRunStatus::Failed;
-	}
-
 	AActor* ThreatActor = AIChar->GetCachedOrder().TargetActor;
 	if (!IsValid(ThreatActor))
 	{
@@ -85,6 +73,43 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 	{
 		Controller->SetFireEnabled(false);
 		return EStateTreeRunStatus::Running;
+	}
+
+	const FShooterSquadOrder& CachedOrder = AIChar->GetCachedOrder();
+
+	float EffectivePeekDuration = Data.PeekDuration;
+	float EffectiveBurstDuration = 0.4f;
+	float EffectiveBurstPause = 0.3f;
+
+	switch (CachedOrder.BaseTacticalOrder)
+	{
+	case EShooterTacticalOrder::Suppress:
+		EffectivePeekDuration = Data.SuppressPeekDuration;
+		EffectiveBurstDuration = Data.SuppressBurstDuration;
+		EffectiveBurstPause = Data.SuppressBurstPause;
+		break;
+
+	case EShooterTacticalOrder::Push:
+		EffectivePeekDuration = Data.PushPeekDuration;
+		EffectiveBurstDuration = Data.PushBurstDuration;
+		EffectiveBurstPause = Data.PushBurstPause;
+		break;
+
+	case EShooterTacticalOrder::FlankLeft:
+	case EShooterTacticalOrder::FlankRight:
+		EffectivePeekDuration = Data.FlankPeekDuration;
+		EffectiveBurstDuration = Data.FlankBurstDuration;
+		EffectiveBurstPause = Data.FlankBurstPause;
+		break;
+
+	case EShooterTacticalOrder::Hold:
+		EffectivePeekDuration = Data.HoldPeekDuration;
+		EffectiveBurstDuration = Data.HoldBurstDuration;
+		EffectiveBurstPause = Data.HoldBurstPause;
+		break;
+
+	default:
+		break;
 	}
 
 	const float Time = Controller->GetWorld()->GetTimeSeconds();
@@ -127,10 +152,28 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 		Data.PeekStartTime = Time;
 	}
 
-	Controller->SetFireEnabled(bHasLOS);
-
 	const float PeekElapsed = Time - Data.PeekStartTime;
-	if (PeekElapsed >= Data.PeekDuration)
+
+	bool bShouldFire = false;
+
+	if (bHasLOS)
+	{
+		const float CycleDuration = EffectiveBurstDuration + EffectiveBurstPause;
+
+		if (CycleDuration <= KINDA_SMALL_NUMBER)
+		{
+			bShouldFire = true;
+		}
+		else
+		{
+			const float CycleTime = FMath::Fmod(PeekElapsed, CycleDuration);
+			bShouldFire = CycleTime <= EffectiveBurstDuration;
+		}
+	}
+
+	Controller->SetFireEnabled(bShouldFire);
+
+	if (PeekElapsed >= EffectivePeekDuration)
 	{
 		Controller->SetFireEnabled(false);
 		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ReturnToCover);

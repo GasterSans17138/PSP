@@ -1,9 +1,8 @@
 #include "ShooterAICharacter.h"
 #include "ShooterSquadComponent.h"
 #include "ShooterAIController.h"
-#include "ShooterWeapon.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "ShooterCoverPoint.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AShooterAICharacter::AShooterAICharacter()
 {
@@ -34,12 +33,6 @@ void AShooterAICharacter::RefreshSquadOrder()
 	CurrentTacticalOrder = CachedOrder.TacticalOrder;
 	CurrentSquadMoveLocation = CachedOrder.MoveLocation;
 
-	bOrderIsPush = (CurrentTacticalOrder == EShooterTacticalOrder::Push);
-	bOrderIsSuppress = (CurrentTacticalOrder == EShooterTacticalOrder::Suppress);
-	bOrderIsFlank =
-		(CurrentTacticalOrder == EShooterTacticalOrder::FlankLeft) ||
-		(CurrentTacticalOrder == EShooterTacticalOrder::FlankRight);
-	bOrderIsHold = (CurrentTacticalOrder == EShooterTacticalOrder::Hold);
 	bOrderIsTakeCover = (CurrentTacticalOrder == EShooterTacticalOrder::TakeCover);
 	bOrderIsPeek = (CurrentTacticalOrder == EShooterTacticalOrder::Peek);
 }
@@ -48,7 +41,9 @@ void AShooterAICharacter::RefreshAIState()
 {
 	bHasWeapon = (CurrentWeapon != nullptr);
 
-	if (const AShooterAIController* AIController = Cast<AShooterAIController>(GetController()))
+	const AShooterAIController* AIController = Cast<AShooterAIController>(GetController());
+
+	if (AIController)
 	{
 		bHasCombatTarget = IsValid(AIController->GetCombatTarget());
 		bHasWeaponTarget = IsValid(AIController->GetWeaponTarget());
@@ -67,19 +62,14 @@ void AShooterAICharacter::RefreshAIState()
 		RuntimeState.bReachedTacticalMoveLocation = false;
 		RuntimeState.DistanceToTarget = 0.0f;
 
-		if (const AShooterAIController* AIController = Cast<AShooterAIController>(GetController()))
+		if (AIController)
 		{
 			if (AActor* Target = AIController->GetCombatTarget())
 			{
 				RuntimeState.bHasLineOfSight = AIController->HasLineOfSightToActor(Target);
 				RuntimeState.DistanceToTarget = FVector::Dist(GetActorLocation(), Target->GetActorLocation());
 			}
-		}
 
-		RuntimeState.bReachedTacticalMoveLocation = false;
-
-		if (const AShooterAIController* AIController = Cast<AShooterAIController>(GetController()))
-		{
 			if (const AShooterCoverPoint* CurrentCover = AIController->GetCurrentCoverPoint())
 			{
 				const float DistToCover = FVector::Dist(GetActorLocation(), CurrentCover->GetCoverLocation());
@@ -103,11 +93,6 @@ void AShooterAICharacter::RefreshAIState()
 bool AShooterAICharacter::UsesFirstPersonPresentation() const
 {
 	return false;
-}
-
-void AShooterAICharacter::AttachWeaponMeshes(AShooterWeapon* Weapon)
-{
-	Super::AttachWeaponMeshes(Weapon);
 }
 
 void AShooterAICharacter::PlayFiringMontage(UAnimMontage* Montage)

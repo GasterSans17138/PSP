@@ -9,17 +9,12 @@ class UShooterSquadComponent;
 class AShooterAIController;
 class AShooterWeapon;
 
-/**
- * AI version of the shooter character with built-in squad component.
- * State Tree logic can use this class as context and read simple state variables.
- */
 UCLASS()
 class PSP_API AShooterAICharacter : public AShooterCharacter
 {
 	GENERATED_BODY()
 
 public:
-
 	AShooterAICharacter();
 
 	UFUNCTION(BlueprintCallable, Category = "AI|Squad")
@@ -34,16 +29,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapons")
 	AShooterWeapon* GetCurrentWeaponActor() const { return CurrentWeapon.Get(); }
 
-	// --- AI-specific weapon holder overrides ---
-	virtual void AttachWeaponMeshes(AShooterWeapon* Weapon) override;
 	virtual void PlayFiringMontage(UAnimMontage* Montage) override;
 	virtual FVector GetWeaponTargetLocation() override;
 
 protected:
 	virtual bool UsesFirstPersonPresentation() const override;
-	
-public:
 
+public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	bool bHasWeapon = false;
 
@@ -54,23 +46,11 @@ public:
 	bool bHasCombatTarget = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
-	bool bOrderIsPush = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
-	bool bOrderIsSuppress = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
-	bool bOrderIsFlank = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
-	bool bOrderIsHold = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI|State")
 	bool bOrderIsTakeCover = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	bool bOrderIsPeek = false;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	EShooterTacticalOrder CurrentTacticalOrder = EShooterTacticalOrder::None;
 
@@ -78,7 +58,6 @@ public:
 	FVector CurrentSquadMoveLocation = FVector::ZeroVector;
 
 protected:
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UShooterSquadComponent> SquadComponent;
 

@@ -26,6 +26,42 @@ struct FShooterSTTask_PeekFromCoverInstanceData
 	UPROPERTY(EditAnywhere, Category = "Peek", meta = (ClampMin = 0, Units = "cm"))
 	float FireStartDistance = 180.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Peek|Role")
+	float SuppressPeekDuration = 2.2f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Role")
+	float PushPeekDuration = 1.2f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Role")
+	float FlankPeekDuration = 1.5f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Role")
+	float HoldPeekDuration = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
+	float SuppressBurstDuration = 0.85f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
+	float SuppressBurstPause = 0.15f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
+	float PushBurstDuration = 0.45f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
+	float PushBurstPause = 0.15f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
+	float FlankBurstDuration = 0.35f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
+	float FlankBurstPause = 0.35f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
+	float HoldBurstDuration = 0.25f;
+
+	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
+	float HoldBurstPause = 0.6f;
+
 	UPROPERTY(VisibleAnywhere, Category = "Runtime")
 	float PeekStartTime = -1.0f;
 

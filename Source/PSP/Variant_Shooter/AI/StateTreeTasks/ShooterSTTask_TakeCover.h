@@ -30,6 +30,15 @@ struct FShooterSTTask_TakeCoverInstanceData
 	UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = 0, Units = "s"))
 	float CoverHoldDuration = 2.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = 0, Units = "cm"))
+	float ReevaluateCoverIfTargetMovedDistance = 600.0f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	FVector LastCoverEvaluationTargetLocation = FVector::ZeroVector;
+
+	UPROPERTY(VisibleAnywhere, Category = "Runtime")
+	bool bHasCoverEvaluationTargetLocation = false;
+
 	UPROPERTY(VisibleAnywhere, Category = "Runtime")
 	float LastMoveRequestTime = -1000.0f;
 

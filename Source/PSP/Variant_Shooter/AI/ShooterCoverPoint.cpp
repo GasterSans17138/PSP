@@ -53,14 +53,14 @@ FVector AShooterCoverPoint::GetCoverLocation() const
 	return GetActorLocation() - (GetCoverForward() * StandOffsetFromWall);
 }
 
-FVector AShooterCoverPoint::GetCoverForward() const
-{
-	return CoverForwardArrow ? CoverForwardArrow->GetForwardVector() : GetActorForwardVector();
-}
-
 FVector AShooterCoverPoint::GetPeekLocation() const
 {
-	return PeekArrow ? PeekArrow->GetComponentLocation() : GetCoverLocation();
+	return IsValid(PeekArrow) ? PeekArrow->GetComponentLocation() : GetCoverLocation();
+}
+
+FVector AShooterCoverPoint::GetCoverForward() const
+{
+	return IsValid(CoverForwardArrow) ? CoverForwardArrow->GetForwardVector() : GetActorForwardVector();
 }
 
 bool AShooterCoverPoint::Reserve(AActor* Occupant)
