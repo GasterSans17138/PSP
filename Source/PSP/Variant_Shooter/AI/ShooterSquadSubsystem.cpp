@@ -119,6 +119,45 @@ FShooterSquadOrder UShooterSquadSubsystem::BuildOrder(FName SquadId, const UShoo
 	return Order;
 }
 
+bool UShooterSquadSubsystem::CanSquadThrowGrenade(FName SquadId, float Cooldown) const
+{
+	if (SquadId.IsNone())
+	{
+		return false;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	const FShooterSquadRuntime* Squad = Squads.Find(SquadId);
+	if (!Squad)
+	{
+		return true;
+	}
+
+	return (World->GetTimeSeconds() - Squad->LastSquadGrenadeTime) >= Cooldown;
+}
+
+void UShooterSquadSubsystem::MarkSquadGrenadeThrown(FName SquadId)
+{
+	if (SquadId.IsNone())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	FShooterSquadRuntime& Squad = Squads.FindOrAdd(SquadId);
+	Squad.LastSquadGrenadeTime = World->GetTimeSeconds();
+}
+
 void UShooterSquadSubsystem::CleanupNullMembers(FShooterSquadRuntime& Squad) const
 {
 	Squad.Members.RemoveAll([](const TObjectPtr<UShooterSquadComponent>& Member)

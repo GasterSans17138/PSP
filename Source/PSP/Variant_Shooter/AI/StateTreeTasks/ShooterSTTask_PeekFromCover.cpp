@@ -4,6 +4,7 @@
 #include "ShooterCoverPoint.h"
 #include "StateTreeExecutionContext.h"
 #include "ShooterCoverSubsystem.h"
+#include "ShooterSquadComponent.h"
 
 AShooterAIController* FShooterSTTask_PeekFromCover::GetController(FStateTreeExecutionContext& Context) const
 {
@@ -211,13 +212,17 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 		break;
 	}
 
+	UShooterSquadComponent* SquadComp = Controller->GetControlledSquadComponent();
+
 	if (PeekElapsed >= EffectivePeekDuration)
 	{
 		Controller->SetFireEnabled(false);
 
 		if (Data.bAllowGrenadeRequestWhenNoLOS &&
 			!Data.bHasSeenTargetDuringPeek &&
-			Controller->CanThrowGrenade(EffectiveGrenadeCooldown))
+			Controller->CanThrowGrenade(EffectiveGrenadeCooldown) &&
+			SquadComp &&
+			SquadComp->CanThrowSquadGrenade(EffectiveGrenadeCooldown))
 		{
 			Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ThrowGrenade);
 		}

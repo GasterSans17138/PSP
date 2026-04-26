@@ -17,6 +17,9 @@ struct FShooterSquadRuntime
 
 	UPROPERTY()
 	TObjectPtr<AActor> SharedTarget = nullptr;
+
+	UPROPERTY()
+	float LastSquadGrenadeTime = -10000.0f;
 };
 
 UCLASS()
@@ -34,10 +37,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Squad")
 	FShooterSquadOrder BuildOrder(FName SquadId, const UShooterSquadComponent* Requester) const;
 
+	UFUNCTION(BlueprintCallable, Category = "Squad")
+	bool CanSquadThrowGrenade(FName SquadId, float Cooldown) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Squad")
+	void MarkSquadGrenadeThrown(FName SquadId);
+
 private:
 	UPROPERTY(Transient)
 	TMap<FName, FShooterSquadRuntime> Squads;
 
+private:
 	void CleanupNullMembers(FShooterSquadRuntime& Squad) const;
 	void ReassignRoles(FShooterSquadRuntime& Squad) const;
 

@@ -45,6 +45,24 @@ FShooterSquadOrder UShooterSquadComponent::GetCurrentOrder() const
 	return FShooterSquadOrder();
 }
 
+bool UShooterSquadComponent::CanThrowSquadGrenade(float Cooldown) const
+{
+	if (const UShooterSquadSubsystem* Subsystem = GetSquadSubsystem())
+	{
+		return Subsystem->CanSquadThrowGrenade(SquadId, Cooldown);
+	}
+
+	return true;
+}
+
+void UShooterSquadComponent::MarkSquadGrenadeThrown()
+{
+	if (UShooterSquadSubsystem* Subsystem = GetSquadSubsystem())
+	{
+		Subsystem->MarkSquadGrenadeThrown(SquadId);
+	}
+}
+
 UShooterSquadSubsystem* UShooterSquadComponent::GetSquadSubsystem() const
 {
 	if (UWorld* World = GetWorld())

@@ -71,6 +71,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Squad")
 	const FShooterSquadMemberRuntimeState& GetRuntimeState() const { return RuntimeState; }
 
+	UFUNCTION(BlueprintCallable, Category = "Squad")
+	bool CanThrowSquadGrenade(float Cooldown) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Squad")
+	void MarkSquadGrenadeThrown();
+
 private:
 	UPROPERTY(Transient)
 	FShooterSquadMemberRuntimeState RuntimeState;

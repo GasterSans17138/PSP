@@ -6,6 +6,7 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "ShooterCoverPoint.h"
+#include "ShooterSquadComponent.h"
 
 AShooterAIController* FShooterSTTask_ThrowGrenade::GetController(FStateTreeExecutionContext& Context) const
 {
@@ -88,6 +89,11 @@ EStateTreeRunStatus FShooterSTTask_ThrowGrenade::Tick(
 		if (bSpawned)
 		{
 			Controller->MarkGrenadeThrown();
+
+			if (UShooterSquadComponent* SquadComp = Controller->GetControlledSquadComponent())
+			{
+				SquadComp->MarkSquadGrenadeThrown();
+			}
 		}
 
 		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ReturnToCover);
