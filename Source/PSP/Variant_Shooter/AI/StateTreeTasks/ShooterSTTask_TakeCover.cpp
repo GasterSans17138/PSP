@@ -221,7 +221,11 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 
 	const float TimeInCover = Time - Data.CoverReachedTime;
 
-	if (TimeInCover < Data.CoverHoldDuration)
+	const float SuppressionAlpha = AIChar->GetSuppressionAlpha();
+	const float EffectiveCoverHoldDuration =
+		Data.CoverHoldDuration + (Data.ExtraCoverHoldDurationWhenSuppressed * SuppressionAlpha);
+
+	if (TimeInCover < EffectiveCoverHoldDuration)
 	{
 		return EStateTreeRunStatus::Running;
 	}

@@ -33,6 +33,9 @@ struct FShooterSTTask_TakeCoverInstanceData
 	UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = 0, Units = "cm"))
 	float ReevaluateCoverIfTargetMovedDistance = 600.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Suppression", meta = (ClampMin = 0, Units = "s"))
+	float ExtraCoverHoldDurationWhenSuppressed = 1.5f;
+
 	UPROPERTY(VisibleAnywhere, Category = "Runtime")
 	FVector LastCoverEvaluationTargetLocation = FVector::ZeroVector;
 

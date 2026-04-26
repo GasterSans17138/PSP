@@ -6,6 +6,8 @@
 
 AShooterAICharacter::AShooterAICharacter()
 {
+	PrimaryActorTick.bCanEverTick = true;
+
 	SquadComponent = CreateDefaultSubobject<UShooterSquadComponent>(TEXT("SquadComponent"));
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
@@ -16,6 +18,16 @@ AShooterAICharacter::AShooterAICharacter()
 		MoveComp->bOrientRotationToMovement = false;
 		MoveComp->bUseControllerDesiredRotation = true;
 		MoveComp->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
+	}
+}
+
+void AShooterAICharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (SuppressionValue > 0.0f)
+	{
+		SuppressionValue = FMath::Max(0.0f, SuppressionValue - (SuppressionDecayPerSecond * DeltaTime));
 	}
 }
 
@@ -128,4 +140,45 @@ FVector AShooterAICharacter::GetWeaponTargetLocation()
 	}
 
 	return GetActorLocation() + (GetActorForwardVector() * MaxAimDistance);
+}
+
+float AShooterAICharacter::TakeDamage(
+	float Damage,
+	struct FDamageEvent const& DamageEvent,
+	AController* EventInstigator,
+	AActor* DamageCauser)
+{
+	const float AppliedDamage = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
+
+	if (AppliedDamage > 0.0f)
+	{
+		AddSuppression(35.0f);
+	}
+
+	return AppliedDamage;
+}
+
+void AShooterAICharacter::AddSuppression(float Amount)
+{
+	if (Amount <= 0.0f)
+	{
+		return;
+	}
+
+	SuppressionValue = FMath::Clamp(SuppressionValue + Amount, 0.0f, MaxSuppressionValue);
+}
+
+void AShooterAICharacter::ClearSuppression()
+{
+	SuppressionValue = 0.0f;
+}
+
+float AShooterAICharacter::GetSuppressionAlpha() const
+{
+	if (MaxSuppressionValue <= KINDA_SMALL_NUMBER)
+	{
+		return 0.0f;
+	}
+
+	return FMath::Clamp(SuppressionValue / MaxSuppressionValue, 0.0f, 1.0f);
 }

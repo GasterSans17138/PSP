@@ -23,6 +23,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|State")
 	void RefreshAIState();
 
+	UFUNCTION(BlueprintCallable, Category = "AI|Suppression")
+	void AddSuppression(float Amount);
+
+	UFUNCTION(BlueprintCallable, Category = "AI|Suppression")
+	void ClearSuppression();
+
+	UFUNCTION(BlueprintPure, Category = "AI|Suppression")
+	float GetSuppressionValue() const { return SuppressionValue; }
+
+	UFUNCTION(BlueprintPure, Category = "AI|Suppression")
+	float GetSuppressionAlpha() const;
+
 	UFUNCTION(BlueprintPure, Category = "AI|Squad")
 	const FShooterSquadOrder& GetCachedOrder() const { return CachedOrder; }
 
@@ -32,7 +44,15 @@ public:
 	virtual void PlayFiringMontage(UAnimMontage* Montage) override;
 	virtual FVector GetWeaponTargetLocation() override;
 
+	virtual float TakeDamage(
+		float Damage,
+		struct FDamageEvent const& DamageEvent,
+		AController* EventInstigator,
+		AActor* DamageCauser) override;
+
 protected:
+	virtual void Tick(float DeltaTime) override;
+
 	virtual bool UsesFirstPersonPresentation() const override;
 
 public:
@@ -66,4 +86,13 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "AI|Squad")
 	FShooterSquadOrder CachedOrder;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|Suppression", meta = (ClampMin = 0))
+	float MaxSuppressionValue = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI|Suppression", meta = (ClampMin = 0))
+	float SuppressionDecayPerSecond = 18.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Suppression")
+	float SuppressionValue = 0.0f;
 };

@@ -12,6 +12,7 @@
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
+#include "ShooterAICharacter.h"
 
 AShooterProjectile::AShooterProjectile()
 {
@@ -67,6 +68,11 @@ void AShooterProjectile::NotifyHit(class UPrimitiveComponent* MyComp, AActor* Ot
 
 	// make AI perception noise
 	MakeNoise(NoiseLoudness, GetInstigator(), GetActorLocation(), NoiseRange, NoiseTag);
+
+	if (bApplyNearMissSuppression)
+	{
+		ApplyNearMissSuppression(Hit.ImpactPoint, Other);
+	}
 
 	if (bExplodeOnHit)
 	{
@@ -164,4 +170,60 @@ void AShooterProjectile::OnDeferredDestruction()
 {
 	// destroy this actor
 	Destroy();
+}
+
+
+void AShooterProjectile::ApplyNearMissSuppression(const FVector& Center, AActor* DirectHitActor)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	TArray<FOverlapResult> Overlaps;
+
+	FCollisionShape OverlapShape;
+	OverlapShape.SetSphere(NearMissSuppressionRadius);
+
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.AddIgnoredActor(GetInstigator());
+
+	World->OverlapMultiByObjectType(
+		Overlaps,
+		Center,
+		FQuat::Identity,
+		ObjectParams,
+		OverlapShape,
+		QueryParams);
+
+	TArray<AActor*> SuppressedActors;
+
+	for (const FOverlapResult& Overlap : Overlaps)
+	{
+		AActor* Actor = Overlap.GetActor();
+		if (!IsValid(Actor) || Actor == DirectHitActor)
+		{
+			continue;
+		}
+
+		if (SuppressedActors.Contains(Actor))
+		{
+			continue;
+		}
+
+		SuppressedActors.Add(Actor);
+
+		if (AShooterAICharacter* AIChar = Cast<AShooterAICharacter>(Actor))
+		{
+			const float Dist = FVector::Dist(Center, AIChar->GetActorLocation());
+			const float Alpha = 1.0f - FMath::Clamp(Dist / NearMissSuppressionRadius, 0.0f, 1.0f);
+
+			AIChar->AddSuppression(NearMissSuppressionAmount * Alpha);
+		}
+	}
 }

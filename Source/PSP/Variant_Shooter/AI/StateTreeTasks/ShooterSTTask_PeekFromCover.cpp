@@ -117,6 +117,10 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 		break;
 	}
 
+	const float SuppressionAlpha = AIChar->GetSuppressionAlpha();
+	const float SuppressionDurationMultiplier = FMath::Lerp(1.0f, Data.SuppressedPeekDurationMultiplier, SuppressionAlpha);
+	EffectivePeekDuration *= SuppressionDurationMultiplier;
+
 	const float Time = Controller->GetWorld()->GetTimeSeconds();
 	const float TotalPeekElapsed = Time - Data.StateEnterTime;
 

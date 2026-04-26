@@ -65,6 +65,9 @@ struct FShooterSTTask_PeekFromCoverInstanceData
 	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
 	float HoldBurstPause = 0.6f;
 
+	UPROPERTY(EditAnywhere, Category = "Suppression", meta = (ClampMin = 0, ClampMax = 1))
+	float SuppressedPeekDurationMultiplier = 0.45f;
+
 	UPROPERTY(EditAnywhere, Category = "Grenade")
 	bool bAllowGrenadeRequestWhenNoLOS = true;
 

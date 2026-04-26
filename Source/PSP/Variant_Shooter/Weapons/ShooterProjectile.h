@@ -75,6 +75,15 @@ protected:
 	/** Timer to handle deferred destruction of this projectile */
 	FTimerHandle DestructionTimer;
 
+	UPROPERTY(EditAnywhere, Category = "Projectile|Suppression", meta = (ClampMin = 0, Units = "cm"))
+	float NearMissSuppressionRadius = 300.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Projectile|Suppression", meta = (ClampMin = 0))
+	float NearMissSuppressionAmount = 12.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Projectile|Suppression")
+	bool bApplyNearMissSuppression = true;
+
 public:	
 
 	/** Constructor */
@@ -105,5 +114,7 @@ protected:
 
 	/** Called from the destruction timer to destroy this projectile */
 	void OnDeferredDestruction();
+
+	void ApplyNearMissSuppression(const FVector& Center, AActor* DirectHitActor);
 
 };
