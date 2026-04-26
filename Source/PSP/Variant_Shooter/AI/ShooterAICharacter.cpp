@@ -73,6 +73,7 @@ void AShooterAICharacter::RefreshAIState()
 		RuntimeState.bHasWeapon = bHasWeapon;
 		RuntimeState.bHasLineOfSight = false;
 		RuntimeState.bReachedTacticalMoveLocation = false;
+		RuntimeState.bIsPeeking = false;
 		RuntimeState.DistanceToTarget = 0.0f;
 
 		if (AIController)
@@ -95,6 +96,12 @@ void AShooterAICharacter::RefreshAIState()
 				const float ReachedTolerance = 450.0f;
 				RuntimeState.bReachedTacticalMoveLocation = DistToMove <= ReachedTolerance;
 			}
+		}
+
+		if (AIController)
+		{
+			RuntimeState.bIsPeeking =
+				AIController->GetCoverCombatPhase() == EShooterCoverCombatPhase::Peek;
 		}
 
 		SquadComponent->SetRuntimeState(RuntimeState);

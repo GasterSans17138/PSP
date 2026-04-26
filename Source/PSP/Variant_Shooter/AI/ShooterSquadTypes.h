@@ -52,6 +52,9 @@ struct FShooterSquadOrder
 	bool bReachedMoveLocation = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Squad")
+	bool bHasSquadCoverFire = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Squad")
 	EShooterSquadRole RecommendedRole = EShooterSquadRole::Assaulter;
 
 	// Current executable order used by State Tree: TakeCover / Peek.

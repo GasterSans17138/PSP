@@ -104,6 +104,7 @@ FShooterSquadOrder UShooterSquadSubsystem::BuildOrder(FName SquadId, const UShoo
 		});
 
 	Order.BaseTacticalOrder = ComputeBaseTacticalOrder(ValidMembers, Requester, Order.TargetActor);
+	Order.bHasSquadCoverFire = HasAnyOtherMemberPeeking(ValidMembers, Requester);
 	Order.TacticalOrder = ComputeCoverTacticalOrder(Requester);
 
 	Order.MoveLocation = ComputeMoveLocation(Requester, Order.TargetActor, Order.BaseTacticalOrder);
@@ -226,6 +227,21 @@ EShooterTacticalOrder UShooterSquadSubsystem::ComputeBaseTacticalOrder(
 
 	const FShooterSquadMemberRuntimeState& MyState = Requester->GetRuntimeState();
 
+	int32 PeekingMembersCount = 0;
+
+	for (const UShooterSquadComponent* Member : ValidMembers)
+	{
+		if (IsValid(Member) && Member != Requester)
+		{
+			if (Member->GetRuntimeState().bIsPeeking)
+			{
+				++PeekingMembersCount;
+			}
+		}
+	}
+
+	const bool bHasSquadCoverFire = PeekingMembersCount > 0;
+
 	switch (Requester->GetRole())
 	{
 	case EShooterSquadRole::Flanker:
@@ -253,7 +269,16 @@ EShooterTacticalOrder UShooterSquadSubsystem::ComputeBaseTacticalOrder(
 	}
 
 	case EShooterSquadRole::Breacher:
+	{
+		// If another squadmate is peeking/firing, Breacher takes the opportunity to push.
+		if (bHasSquadCoverFire)
+		{
+			return EShooterTacticalOrder::Push;
+		}
+
+		// Otherwise keep pressure but less aggressively.
 		return EShooterTacticalOrder::Push;
+	}
 
 	case EShooterSquadRole::Suppressor:
 		return EShooterTacticalOrder::Suppress;
@@ -368,4 +393,24 @@ FVector UShooterSquadSubsystem::ComputeMoveLocation(
 	default:
 		return TargetLocation + (ToRequester * BaseDist);
 	}
+}
+
+bool UShooterSquadSubsystem::HasAnyOtherMemberPeeking(
+	const TArray<UShooterSquadComponent*>& ValidMembers,
+	const UShooterSquadComponent* Requester) const
+{
+	for (const UShooterSquadComponent* Member : ValidMembers)
+	{
+		if (!IsValid(Member) || Member == Requester)
+		{
+			continue;
+		}
+
+		if (Member->GetRuntimeState().bIsPeeking)
+		{
+			return true;
+		}
+	}
+
+	return false;
 }

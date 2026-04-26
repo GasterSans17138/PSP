@@ -164,9 +164,21 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 	{
 		const FShooterSquadOrder& CachedOrder = AIChar->GetCachedOrder();
 
-		const FVector PreferredCoverLocation = !CachedOrder.MoveLocation.IsNearlyZero()
+		FVector PreferredCoverLocation = !CachedOrder.MoveLocation.IsNearlyZero()
 			? CachedOrder.MoveLocation
 			: Controller->GetPawn()->GetActorLocation();
+
+		if (CachedOrder.bHasSquadCoverFire && CachedOrder.BaseTacticalOrder == EShooterTacticalOrder::Push)
+		{
+			if (IsValid(ThreatActor))
+			{
+				const FVector ToTarget = (ThreatActor->GetActorLocation() - Controller->GetPawn()->GetActorLocation()).GetSafeNormal2D();
+				if (!ToTarget.IsNearlyZero())
+				{
+					PreferredCoverLocation += ToTarget * 350.0f;
+				}
+			}
+		}
 
 		AShooterCoverPoint* BestCover = CoverSubsystem->FindBestCoverNearLocation(
 			Controller->GetPawn(),
@@ -221,11 +233,7 @@ EStateTreeRunStatus FShooterSTTask_TakeCover::Tick(FStateTreeExecutionContext& C
 
 	const float TimeInCover = Time - Data.CoverReachedTime;
 
-	const float SuppressionAlpha = AIChar->GetSuppressionAlpha();
-	const float EffectiveCoverHoldDuration =
-		Data.CoverHoldDuration + (Data.ExtraCoverHoldDurationWhenSuppressed * SuppressionAlpha);
-
-	if (TimeInCover < EffectiveCoverHoldDuration)
+	if (TimeInCover < Data.CoverHoldDuration)
 	{
 		return EStateTreeRunStatus::Running;
 	}

@@ -65,4 +65,8 @@ private:
 		const UShooterSquadComponent* Requester,
 		const AActor* TargetActor,
 		EShooterTacticalOrder TacticalOrder) const;
+
+	bool HasAnyOtherMemberPeeking(
+		const TArray<UShooterSquadComponent*>& ValidMembers,
+		const UShooterSquadComponent* Requester) const;
 };

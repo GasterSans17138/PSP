@@ -23,6 +23,9 @@ struct FShooterSquadMemberRuntimeState
 
 	UPROPERTY(BlueprintReadOnly, Category = "Squad")
 	float DistanceToTarget = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Squad")
+	bool bIsPeeking = false;
 };
 
 UCLASS(ClassGroup = (AI), meta = (BlueprintSpawnableComponent))
