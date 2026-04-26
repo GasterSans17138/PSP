@@ -23,6 +23,9 @@ struct FShooterSTTask_PeekFromCoverInstanceData
 	UPROPERTY(EditAnywhere, Category = "Peek", meta = (ClampMin = 0, Units = "s"))
 	float PeekDuration = 2.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Peek", meta = (ClampMin = 0, Units = "s"))
+	float MaxPeekTotalDuration = 4.0f;
+
 	UPROPERTY(EditAnywhere, Category = "Peek", meta = (ClampMin = 0, Units = "cm"))
 	float FireStartDistance = 180.0f;
 
@@ -61,6 +64,24 @@ struct FShooterSTTask_PeekFromCoverInstanceData
 
 	UPROPERTY(EditAnywhere, Category = "Peek|Fire")
 	float HoldBurstPause = 0.6f;
+
+	UPROPERTY(EditAnywhere, Category = "Grenade")
+	bool bAllowGrenadeRequestWhenNoLOS = true;
+
+	UPROPERTY(EditAnywhere, Category = "Grenade", meta = (ClampMin = 0, Units = "s"))
+	float GrenadeCooldown = 8.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Grenade|Role", meta = (ClampMin = 0, Units = "s"))
+	float BreacherGrenadeCooldown = 4.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Grenade|Role", meta = (ClampMin = 0, Units = "s"))
+	float SuppressorGrenadeCooldown = 8.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Grenade|Role", meta = (ClampMin = 0, Units = "s"))
+	float AssaulterGrenadeCooldown = 10.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Grenade|Role", meta = (ClampMin = 0, Units = "s"))
+	float FlankerGrenadeCooldown = 14.0f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Runtime")
 	float PeekStartTime = -1.0f;

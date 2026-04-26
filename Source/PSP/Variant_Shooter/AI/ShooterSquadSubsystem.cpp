@@ -259,6 +259,9 @@ EShooterTacticalOrder UShooterSquadSubsystem::ComputeCoverTacticalOrder(
 	case EShooterCoverCombatPhase::Peek:
 		return EShooterTacticalOrder::Peek;
 
+	case EShooterCoverCombatPhase::ThrowGrenade:
+		return EShooterTacticalOrder::ThrowGrenade;
+
 	case EShooterCoverCombatPhase::None:
 	case EShooterCoverCombatPhase::TakingCover:
 	case EShooterCoverCombatPhase::ReturnToCover:

@@ -35,6 +35,7 @@ void AShooterAICharacter::RefreshSquadOrder()
 
 	bOrderIsTakeCover = (CurrentTacticalOrder == EShooterTacticalOrder::TakeCover);
 	bOrderIsPeek = (CurrentTacticalOrder == EShooterTacticalOrder::Peek);
+	bOrderIsThrowGrenade = (CurrentTacticalOrder == EShooterTacticalOrder::ThrowGrenade);
 }
 
 void AShooterAICharacter::RefreshAIState()

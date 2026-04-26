@@ -52,6 +52,9 @@ public:
 	bool bOrderIsPeek = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
+	bool bOrderIsThrowGrenade = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")
 	EShooterTacticalOrder CurrentTacticalOrder = EShooterTacticalOrder::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|State")

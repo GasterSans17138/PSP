@@ -27,7 +27,8 @@ enum class EShooterTacticalOrder : uint8
 
 	// Cover combat orders
 	TakeCover  UMETA(DisplayName = "Take Cover"),
-	Peek       UMETA(DisplayName = "Peek")
+	Peek       UMETA(DisplayName = "Peek"),
+	ThrowGrenade UMETA(DisplayName = "Throw Grenade")
 };
 
 USTRUCT(BlueprintType)

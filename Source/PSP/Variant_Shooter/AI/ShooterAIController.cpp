@@ -300,3 +300,22 @@ EShooterCoverCombatPhase AShooterAIController::GetCoverCombatPhase() const
 {
 	return CoverCombatPhase;
 }
+
+bool AShooterAIController::CanThrowGrenade(float Cooldown) const
+{
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	return (World->GetTimeSeconds() - LastGrenadeThrowTime) >= Cooldown;
+}
+
+void AShooterAIController::MarkGrenadeThrown()
+{
+	if (const UWorld* World = GetWorld())
+	{
+		LastGrenadeThrowTime = World->GetTimeSeconds();
+	}
+}

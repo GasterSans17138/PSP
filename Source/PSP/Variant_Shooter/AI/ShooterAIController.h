@@ -14,6 +14,7 @@ enum class EShooterCoverCombatPhase : uint8
 	None,
 	TakingCover,
 	Peek,
+	ThrowGrenade,
 	ReturnToCover
 };
 
@@ -99,6 +100,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "AI|Cover")
 	EShooterCoverCombatPhase GetCoverCombatPhase() const;
 
+	UFUNCTION(BlueprintPure, Category = "AI|Grenade")
+	bool CanThrowGrenade(float Cooldown) const;
+
+	UFUNCTION(BlueprintCallable, Category = "AI|Grenade")
+	void MarkGrenadeThrown();
+
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "AI|Combat")
 	TWeakObjectPtr<APawn> CombatTarget;
@@ -111,4 +118,7 @@ protected:
 
 	UPROPERTY(Transient)
 	EShooterCoverCombatPhase CoverCombatPhase = EShooterCoverCombatPhase::None;
+
+	UPROPERTY(Transient)
+	float LastGrenadeThrowTime = -10000.0f;
 };

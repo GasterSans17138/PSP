@@ -60,7 +60,10 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 	AShooterCoverPoint* CoverPoint = Controller->GetCurrentCoverPoint();
 	if (!IsValid(CoverPoint))
 	{
-		return EStateTreeRunStatus::Failed;
+		Controller->SetFireEnabled(false);
+		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ReturnToCover);
+		AIChar->RefreshAIState();
+		return EStateTreeRunStatus::Succeeded;
 	}
 
 	AActor* ThreatActor = AIChar->GetCachedOrder().TargetActor;
@@ -72,7 +75,9 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 	if (!IsValid(ThreatActor))
 	{
 		Controller->SetFireEnabled(false);
-		return EStateTreeRunStatus::Running;
+		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ReturnToCover);
+		AIChar->RefreshAIState();
+		return EStateTreeRunStatus::Succeeded;
 	}
 
 	const FShooterSquadOrder& CachedOrder = AIChar->GetCachedOrder();
@@ -113,6 +118,16 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 	}
 
 	const float Time = Controller->GetWorld()->GetTimeSeconds();
+	const float TotalPeekElapsed = Time - Data.StateEnterTime;
+
+	if (TotalPeekElapsed >= Data.MaxPeekTotalDuration)
+	{
+		Controller->SetFireEnabled(false);
+		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ReturnToCover);
+		AIChar->RefreshAIState();
+		return EStateTreeRunStatus::Succeeded;
+	}
+
 	const FVector SelfLocation = Controller->GetPawn()->GetActorLocation();
 	const FVector PeekLocation = CoverPoint->GetPeekLocation();
 	const float DistToPeek = FVector::Dist(SelfLocation, PeekLocation);
@@ -121,9 +136,6 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 
 	if (!bCloseEnoughToPeek)
 	{
-		Data.PeekStartTime = -1.0f;
-		Data.bHasSeenTargetDuringPeek = false;
-
 		if ((Time - Data.LastMoveRequestTime) >= Data.RepathInterval)
 		{
 			if (Controller->MoveToPeekLocation(Data.MoveAcceptanceRadius, true))
@@ -173,10 +185,42 @@ EStateTreeRunStatus FShooterSTTask_PeekFromCover::Tick(FStateTreeExecutionContex
 
 	Controller->SetFireEnabled(bShouldFire);
 
+	float EffectiveGrenadeCooldown = Data.GrenadeCooldown;
+
+	switch (CachedOrder.RecommendedRole)
+	{
+	case EShooterSquadRole::Breacher:
+		EffectiveGrenadeCooldown = Data.BreacherGrenadeCooldown;
+		break;
+
+	case EShooterSquadRole::Suppressor:
+		EffectiveGrenadeCooldown = Data.SuppressorGrenadeCooldown;
+		break;
+
+	case EShooterSquadRole::Flanker:
+		EffectiveGrenadeCooldown = Data.FlankerGrenadeCooldown;
+		break;
+
+	case EShooterSquadRole::Assaulter:
+	default:
+		EffectiveGrenadeCooldown = Data.AssaulterGrenadeCooldown;
+		break;
+	}
+
 	if (PeekElapsed >= EffectivePeekDuration)
 	{
 		Controller->SetFireEnabled(false);
-		Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ReturnToCover);
+
+		if (Data.bAllowGrenadeRequestWhenNoLOS &&
+			!Data.bHasSeenTargetDuringPeek &&
+			Controller->CanThrowGrenade(EffectiveGrenadeCooldown))
+		{
+			Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ThrowGrenade);
+		}
+		else
+		{
+			Controller->SetCoverCombatPhase(EShooterCoverCombatPhase::ReturnToCover);
+		}
 
 		AIChar->RefreshAIState();
 
